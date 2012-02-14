@@ -17,4 +17,6 @@
     <string name="lbl_perkcalculator">Perk Calculator</string>
     <string name="lbl_perkname">%1$s (%2$d)</string>
     <string name="lbl_perkadd">Add</string>
+    <string name="lbl_perkchild">\u003e</string>
+    <string name="lbl_description">Description</string>
 </resources>

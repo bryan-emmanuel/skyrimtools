@@ -2,8 +2,10 @@ package com.piusvelte.skyrimtools;
 
 import com.piusvelte.skyrimtools.SkyrimToolsProvider.Categories;
 
+import android.app.AlertDialog;
 import android.app.ListActivity;
 import android.content.ContentValues;
+import android.content.DialogInterface;
 import android.content.Intent;
 import android.database.Cursor;
 import android.os.Bundle;
@@ -54,9 +56,9 @@ public class PerkCalculator extends ListActivity {
 		super.onResume();
 		Cursor c;
 		if (mCategory > 0) {
-			c = managedQuery(Categories.CONTENT_URI, new String[]{Categories._ID, Categories.name, Categories.max, Categories.value, "case when (select category_relationships.child from category_relationships where category_relationships.parent=categories._id) is null then 0 else 1 end as " + Categories.child}, "_id in (select category_relationships.child from category_relationships where category_relationships.parent=?)", new String[]{Long.toString(mCategory)}, null);
+			c = managedQuery(Categories.CONTENT_URI, new String[]{Categories._ID, Categories.name, Categories.max, Categories.value, "case when (select category_relationships.child from category_relationships where category_relationships.parent=categories._id) is null then 0 else 1 end as " + Categories.child, Categories.desc}, "_id in (select category_relationships.child from category_relationships where category_relationships.parent=?)", new String[]{Long.toString(mCategory)}, null);
 		} else {
-			c = managedQuery(Categories.CONTENT_URI, new String[]{Categories._ID, Categories.name, Categories.max, Categories.value, "case when (select category_relationships.child from category_relationships where category_relationships.parent=categories._id) is null then 0 else 1 end as " + Categories.child}, "(select category_relationships._id from category_relationships where category_relationships.child=categories._id) is null", null, null);
+			c = managedQuery(Categories.CONTENT_URI, new String[]{Categories._ID, Categories.name, Categories.max, Categories.value, "case when (select category_relationships.child from category_relationships where category_relationships.parent=categories._id) is null then 0 else 1 end as " + Categories.child, Categories.desc}, "(select category_relationships._id from category_relationships where category_relationships.child=categories._id) is null", null, null);
 		}
 		SimpleCursorAdapter sca = new SimpleCursorAdapter(this, R.layout.perkrow, c, new String[] {Categories.name}, new int[] {R.id.perkname});
 		sca.setViewBinder(mViewBinder);
@@ -73,14 +75,33 @@ public class PerkCalculator extends ListActivity {
 				final long id = cursor.getLong(SkyrimToolsProvider.sCategoriesColumns._id.ordinal());
 				int max = cursor.getInt(SkyrimToolsProvider.sCategoriesColumns.max.ordinal());
 				final int value = cursor.getInt(SkyrimToolsProvider.sCategoriesColumns.value.ordinal());
+				final String desc = cursor.getString(SkyrimToolsProvider.sCategoriesColumns.desc.ordinal());
 				if (max > 0) {
 					perkname.setText(String.format(getString(R.string.lbl_perkname), cursor.getString(SkyrimToolsProvider.sCategoriesColumns.name.ordinal()), cursor.getInt(SkyrimToolsProvider.sCategoriesColumns.value.ordinal())));
 				} else {
 					perkname.setText(cursor.getString(SkyrimToolsProvider.sCategoriesColumns.name.ordinal()));
 				}
+				perkname.setOnClickListener(new OnClickListener() {
+
+					@Override
+					public void onClick(View arg0) {
+						(new AlertDialog.Builder(PerkCalculator.this))
+						.setTitle(R.string.lbl_description)
+						.setMessage(desc)
+						.setNegativeButton(android.R.string.ok, new DialogInterface.OnClickListener() {
+							public void onClick(DialogInterface dialog, int which) {
+								dialog.cancel();
+							}
+						})
+						.show();
+					}
+					
+				});
+				RelativeLayout viewParent = (RelativeLayout) view.getParent();
+				Button perkchild = (Button) viewParent.findViewById(R.id.perkchild);
 				if (((max == 0) || (value > 0)) && (cursor.getInt(SkyrimToolsProvider.sCategoriesColumns.child.ordinal()) > 0)) {
 					// if there are sub-items, they'll load through onClick
-					perkname.setOnClickListener(new OnClickListener() {
+					perkchild.setOnClickListener(new OnClickListener() {
 
 						@Override
 						public void onClick(View v) {
@@ -92,7 +113,7 @@ public class PerkCalculator extends ListActivity {
 				} else {
 					perkname.setEnabled(false);
 				}
-				Button perkadd = (Button) ((RelativeLayout) view.getParent()).findViewById(R.id.perkadd);
+				Button perkadd = (Button) (viewParent).findViewById(R.id.perkadd);
 				if (value < max) {
 					// if there are sub-items, they'll load through onClick
 					perkadd.setOnClickListener(new OnClickListener() {

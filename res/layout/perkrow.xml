@@ -10,10 +10,17 @@
         android:layout_alignParentLeft="true" />
 
     <Button
-        android:id="@+id/perkadd"
+        android:id="@+id/perkchild"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_alignParentRight="true"
+        android:text="@string/lbl_perkchild" />
+
+    <Button
+        android:id="@+id/perkadd"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_toLeftOf="@id/perkchild"
         android:text="@string/lbl_perkadd" />
 
 </RelativeLayout>
