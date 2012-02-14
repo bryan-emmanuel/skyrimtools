@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Skyrim Tools</string>
+    <string name="lbl_level">Level</string>
+    <string name="lbl_magicka">Magicka</string>
+    <string name="lbl_health">Health</string>
+    <string name="lbl_stamina">Stamina</string>
+    <string name="key_preferences">skyrimtools</string>
+    <string name="key_level">level</string>
+    <string name="key_magicka">magicka</string>
+    <string name="key_health">health</string>
+    <string name="key_stamina">stamina</string>
+    <string name="lbl_levelup">Level Up</string>
+    <string name="lbl_reset">Reset</string>
+    <string name="lbl_undo">Undo</string>
+    <string name="lbl_statcalculator">Stat Calculator</string>
+    <string name="lbl_perkcalculator">Perk Calculator</string>
+    <string name="lbl_perkname">%1$s (%2$d)</string>
+    <string name="lbl_perkadd">Add</string>
+</resources>
