@@ -2,16 +2,26 @@
 <RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="fill_parent"
     android:layout_height="fill_parent" >
-    
-    <TextView android:id="@+id/fld_name"
+
+    <TextView
+        android:id="@+id/fld_name"
         android:layout_width="fill_parent"
-        android:layout_height="wrap_content" />
+        android:layout_height="wrap_content"
+        android:layout_alignParentTop="true" />
+
+    <Button
+        android:id="@+id/btn_levelup"
+        android:layout_width="fill_parent"
+        android:layout_height="wrap_content"
+        android:text="@string/lbl_levelup"
+        android:layout_alignParentBottom="true" />
 
     <ScrollView
         android:layout_width="fill_parent"
         android:layout_height="fill_parent"
-        android:orientation="vertical"
-        android:layout_below="@id/fld_name" >
+        android:layout_below="@id/fld_name"
+        android:layout_above="@id/btn_levelup"
+        android:orientation="vertical" >
 
         <LinearLayout
             android:layout_width="fill_parent"
@@ -68,25 +78,6 @@
                         android:text="100" />
                 </TableRow>
             </TableLayout>
-
-            <Button
-                android:id="@+id/btn_levelup"
-                android:layout_width="fill_parent"
-                android:layout_height="wrap_content"
-                android:text="@string/lbl_levelup" />
-
-            <Button
-                android:id="@+id/btn_undo"
-                android:layout_width="fill_parent"
-                android:layout_height="wrap_content"
-                android:enabled="false"
-                android:text="@string/lbl_undo" />
-
-            <Button
-                android:id="@+id/btn_reset"
-                android:layout_width="fill_parent"
-                android:layout_height="wrap_content"
-                android:text="@string/lbl_reset" />
         </LinearLayout>
     </ScrollView>
 

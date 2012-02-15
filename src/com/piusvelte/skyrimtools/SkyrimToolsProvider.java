@@ -1,5 +1,11 @@
 package com.piusvelte.skyrimtools;
 
+import static com.piusvelte.skyrimtools.CharacterBuilder.DEFAULT_LEVEL;
+import static com.piusvelte.skyrimtools.CharacterBuilder.DEFAULT_MAGICKA;
+import static com.piusvelte.skyrimtools.CharacterBuilder.DEFAULT_HEALTH;
+import static com.piusvelte.skyrimtools.CharacterBuilder.DEFAULT_STAMINA;
+import static com.piusvelte.skyrimtools.CharacterBuilder.DEFAULT_VALUE;
+
 import java.util.HashMap;
 
 import android.content.ContentProvider;
@@ -136,6 +142,19 @@ public class SkyrimToolsProvider extends ContentProvider {
 		_id, character_id, character_name, value, perk, perk_name, max, child, desc
 	}
 	
+	private static final int VCHARACTERS = 6;
+	protected static final String VIEW_CHARACTERS = "vcharacters";
+	
+	public static final class Vcharacters implements BaseColumns {
+		
+		private Vcharacters() {
+		}
+		
+		public static final Uri CONTENT_URI = Uri.parse("content://" + AUTHORITY + "/" + VIEW_CHARACTERS);
+
+		public static final String CONTENT_TYPE = "vnd.android.cursor.dir/vnd.piusvelte." + VIEW_CHARACTERS;
+	}
+	
 	static {
 		sUriMatcher = new UriMatcher(UriMatcher.NO_MATCH);
 		sUriMatcher.addURI(AUTHORITY, TABLE_PERKS, PERKS);
@@ -154,6 +173,10 @@ public class SkyrimToolsProvider extends ContentProvider {
 		characters_projectionMap = new HashMap<String, String>();
 		characters_projectionMap.put(Characters._ID, Characters._ID);
 		characters_projectionMap.put(Characters.name, Characters.name);
+		characters_projectionMap.put(Characters.level, Characters.level);
+		characters_projectionMap.put(Characters.magicka, Characters.magicka);
+		characters_projectionMap.put(Characters.health, Characters.health);
+		characters_projectionMap.put(Characters.stamina, Characters.stamina);
 		sUriMatcher.addURI(AUTHORITY, TABLE_CHARACTER_PERKS, CHARACTER_PERKS);
 		character_perks_projectionMap = new HashMap<String, String>();
 		character_perks_projectionMap.put(Character_perks._ID, Character_perks._ID);
@@ -171,6 +194,7 @@ public class SkyrimToolsProvider extends ContentProvider {
 		vcharacter_perks_projectionMap.put(Vcharacter_perks.max, Vcharacter_perks.max);
 		vcharacter_perks_projectionMap.put(Vcharacter_perks.child, Vcharacter_perks.child);
 		vcharacter_perks_projectionMap.put(Vcharacter_perks.desc, Vcharacter_perks.desc);
+		sUriMatcher.addURI(AUTHORITY, VIEW_CHARACTERS, VCHARACTERS);
 	}
 
 	@Override
@@ -189,9 +213,6 @@ public class SkyrimToolsProvider extends ContentProvider {
 			break;
 		case CHARACTER_PERKS:
 			count = db.delete(TABLE_CHARACTER_PERKS, selection, selectionArgs);
-			break;
-		case VCHARACTER_PERKS:
-			count = db.delete(VIEW_CHARACTER_PERKS, selection, selectionArgs);
 			break;
 		default:
 			throw new IllegalArgumentException("Unknown URI " + uri);
@@ -213,6 +234,8 @@ public class SkyrimToolsProvider extends ContentProvider {
 			return Character_perks.CONTENT_TYPE;
 		case VCHARACTER_PERKS:
 			return Vcharacter_perks.CONTENT_TYPE;
+		case VCHARACTERS:
+			return Vcharacters.CONTENT_TYPE;
 		default:
 			throw new IllegalArgumentException("Unknown URI " + uri);
 		}
@@ -242,11 +265,6 @@ public class SkyrimToolsProvider extends ContentProvider {
 		case CHARACTER_PERKS:
 			rowId = db.insert(TABLE_CHARACTER_PERKS, Character_perks._ID, values);
 			returnUri = ContentUris.withAppendedId(Character_perks.CONTENT_URI, rowId);
-			getContext().getContentResolver().notifyChange(returnUri, null);
-			break;
-		case VCHARACTER_PERKS:
-			rowId = db.insert(VIEW_CHARACTER_PERKS, Vcharacter_perks._ID, values);
-			returnUri = ContentUris.withAppendedId(Vcharacter_perks.CONTENT_URI, rowId);
 			getContext().getContentResolver().notifyChange(returnUri, null);
 			break;
 		default:
@@ -288,6 +306,10 @@ public class SkyrimToolsProvider extends ContentProvider {
 			qb.setTables(VIEW_CHARACTER_PERKS);
 			qb.setProjectionMap(vcharacter_perks_projectionMap);
 			break;
+		case VCHARACTERS:
+			qb.setTables(VIEW_CHARACTERS);
+			qb.setProjectionMap(characters_projectionMap);
+			break;
 		default:
 			throw new IllegalArgumentException("Unknown URI " + uri);
 		}
@@ -314,9 +336,6 @@ public class SkyrimToolsProvider extends ContentProvider {
 			break;
 		case CHARACTER_PERKS:
 			count = db.update(TABLE_CHARACTER_PERKS, values, selection, selectionArgs);
-			break;
-		case VCHARACTER_PERKS:
-			count = db.update(VIEW_CHARACTER_PERKS, values, selection, selectionArgs);
 			break;
 		default:
 			throw new IllegalArgumentException("Unknown URI " + uri);
@@ -346,7 +365,20 @@ public class SkyrimToolsProvider extends ContentProvider {
 					+ Perk_relationships.child + " integer);");
 			db.execSQL("create table if not exists " + TABLE_CHARACTERS
 					+ " (" + Characters._ID + " integer primary key autoincrement,"
-					+ Characters.name + " text);");
+					+ Characters.name + " text,"
+					+ Characters.level + " integer,"
+					+ Characters.magicka + " integer,"
+					+ Characters.health + " integer,"
+					+ Characters.stamina + " integer);");
+			db.execSQL("create view if not exists " + VIEW_CHARACTERS + " as select "
+					+ Characters._ID
+					+ "," + Characters.name
+					+ ",case when " + Characters.level + " is null then " + DEFAULT_LEVEL + " else " + Characters.level + " end as " + Characters.level
+					+ ",case when " + Characters.magicka + " is null then " + DEFAULT_MAGICKA + " else " + Characters.magicka + " end as " + Characters.magicka
+					+ ",case when " + Characters.health + " is null then " + DEFAULT_HEALTH + " else " + Characters.health + " end as " + Characters.health
+					+ ",case when " + Characters.stamina + " is null then " + DEFAULT_STAMINA + " else " + Characters.stamina + " end as " + Characters.stamina
+					+ " from "
+					+ TABLE_CHARACTERS + ";");
 			db.execSQL("create table if not exists " + TABLE_CHARACTER_PERKS
 					+ " (" + Character_perks._ID + " integer primary key autoincrement,"
 					+ Character_perks.character + " integer,"
@@ -356,7 +388,8 @@ public class SkyrimToolsProvider extends ContentProvider {
 					+ Character_perks._ID + " as " + Vcharacter_perks._ID
 					+ ",b." + Characters._ID + " as " + Vcharacter_perks.character_id
 					+ ",b." + Characters.name + " as " + Vcharacter_perks.character_name
-					+ ",a." + Character_perks.value + " as " + Vcharacter_perks.value
+					+ ",case when a." + Character_perks.value + " is null then " + DEFAULT_VALUE + " else a." + Character_perks.value + " end as " + Vcharacter_perks.value
+					+ ",c." + Perks._ID + " as " + Vcharacter_perks.perk
 					+ ",c." + Perks.name + " as " + Vcharacter_perks.perk_name
 					+ ",c." + Perks.max + " as " + Vcharacter_perks.max
 					+ ",case when (select d." + Perks.child + " from " + TABLE_PERK_RELATIONSHIPS + " d where d." + Perks._ID + "=b." + Perks._ID + ") is null then 0 else 1 end as " + Vcharacter_perks.child
@@ -365,8 +398,7 @@ public class SkyrimToolsProvider extends ContentProvider {
 					+ TABLE_CHARACTER_PERKS
 					+ " a," + TABLE_CHARACTERS
 					+ " b," + TABLE_PERKS
-					+ " c from "
-					+ " where b." + Characters._ID + "=a." + Character_perks.character
+					+ " c where b." + Characters._ID + "=a." + Character_perks.character
 					+ " and c." + Perks._ID + "=a." + Character_perks.perk + ";");
 			// initial data
 			//THE WARRIOR

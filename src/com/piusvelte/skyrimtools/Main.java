@@ -8,25 +8,20 @@ import android.view.View.OnClickListener;
 import android.widget.Button;
 
 public class Main extends Activity implements OnClickListener {
-	private Button mBtn_statscalculator;
-	private Button mBtn_perkscalculator;
+	private Button mBtn_characterbuilder;
 	
 	@Override
 	public void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
 		setContentView(R.layout.main);
-		mBtn_statscalculator = (Button) findViewById(R.id.btn_statscalculator);
-		mBtn_perkscalculator = (Button) findViewById(R.id.btn_perkscalculator);
-		mBtn_statscalculator.setOnClickListener(this);
-		mBtn_perkscalculator.setOnClickListener(this);
+		mBtn_characterbuilder = (Button) findViewById(R.id.btn_characterbuilder);
+		mBtn_characterbuilder.setOnClickListener(this);
 	}
 
 	@Override
 	public void onClick(View v) {
-		if (v == mBtn_statscalculator) {
-			startActivity(new Intent(this, StatCalculator.class));
-		} else if (v == mBtn_perkscalculator) {
-			startActivity(new Intent(this, PerkCalculator.class));
+		if (v == mBtn_characterbuilder) {
+			startActivity(new Intent(this, CharacterBuilder.class));
 		}
 	}
 	

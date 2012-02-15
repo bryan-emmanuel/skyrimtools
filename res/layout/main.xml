@@ -10,15 +10,10 @@
         android:orientation="vertical" >
 
         <Button
-            android:id="@+id/btn_statscalculator"
+            android:id="@+id/btn_characterbuilder"
             android:layout_width="fill_parent"
             android:layout_height="wrap_content"
-            android:text="@string/lbl_statcalculator" />
-        <Button
-            android:id="@+id/btn_perkscalculator"
-            android:layout_width="fill_parent"
-            android:layout_height="wrap_content"
-            android:text="@string/lbl_perkcalculator" />
+            android:text="@string/lbl_characterbuilder" />
     </LinearLayout>
 
 </ScrollView>

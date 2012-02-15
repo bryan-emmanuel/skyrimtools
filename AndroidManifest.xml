@@ -20,6 +20,7 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+        <activity android:name=".CharacterBuilder"></activity>
     	<activity android:name=".StatCalculator"></activity>
     	<activity android:name=".PerkCalculator"></activity>
 		<provider android:name=".SkyrimToolsProvider" android:authorities="com.piusvelte.skyrimtools.SkyrimToolsProvider"

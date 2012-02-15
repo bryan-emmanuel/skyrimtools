@@ -2,6 +2,8 @@ package com.piusvelte.skyrimtools;
 
 import static com.piusvelte.skyrimtools.CharacterBuilder.EXTRA_CHARACTER_ID;
 import static com.piusvelte.skyrimtools.CharacterBuilder.EXTRA_CHARACTER_NAME;
+import static com.piusvelte.skyrimtools.CharacterBuilder.RESET_ID;
+import static com.piusvelte.skyrimtools.CharacterBuilder.SAVE_ID;
 
 import com.piusvelte.skyrimtools.SkyrimToolsProvider.Character_perks;
 import com.piusvelte.skyrimtools.SkyrimToolsProvider.Perks;
@@ -28,8 +30,6 @@ public class PerkCalculator extends ListActivity {
 	private long mCharacter_id = 0;
 	private String mCharacter_name;
 	private long mPerk = 0;
-	private static final int RESET_ID = 0;
-	private static final int SAVE_ID = 1;
 
 	@Override
 	public void onCreate(Bundle savedInstanceState) {
@@ -48,6 +48,7 @@ public class PerkCalculator extends ListActivity {
 				mPerk = i.getLongExtra(EXTRA_PERK_ID, 0);
 			}
 		}
+		registerForContextMenu(getListView());
 	}
 
 	@Override
@@ -67,7 +68,7 @@ public class PerkCalculator extends ListActivity {
 			getContentResolver().update(Character_perks.CONTENT_URI, values, Character_perks._ID + "=?", new String[]{Long.toString(mCharacter_id)});
 			return true;
 		case SAVE_ID:
-			//SAVE
+			//TODO
 			return true;
 		}
 		return super.onOptionsItemSelected(item);
@@ -77,13 +78,12 @@ public class PerkCalculator extends ListActivity {
 	protected void onResume() {
 		super.onResume();
 		Cursor c;
-		//Vcharacter_perks._id, Vcharacter_perks.character_id, Vcharacter_perks.character_name, Vcharacter_perks.value, Vcharacter_perks.perk, Vcharacter_perks.perk_name, Vcharacter_perks.max, Vcharacter_perks.child, Vcharacter_perks.desc
 		if (mPerk > 0) {
 			c = managedQuery(Vcharacter_perks.CONTENT_URI, new String[]{Vcharacter_perks._ID, Vcharacter_perks.character_id, Vcharacter_perks.character_name, Vcharacter_perks.value, Vcharacter_perks.perk, Vcharacter_perks.perk_name, Vcharacter_perks.max, Vcharacter_perks.child, Vcharacter_perks.desc}, "_id=? and _id in (select perk_relationships.child from perk_relationships where perk_relationships._id=?)", new String[]{Long.toString(mCharacter_id), Long.toString(mPerk)}, null);
 		} else {
-			c = managedQuery(Vcharacter_perks.CONTENT_URI, new String[]{Vcharacter_perks._ID, Vcharacter_perks.character_id, Vcharacter_perks.character_name, Vcharacter_perks.value, Vcharacter_perks.perk, Vcharacter_perks.perk_name, Vcharacter_perks.max, Vcharacter_perks.child, Vcharacter_perks.desc}, "_id=? and (select perk_relationships._id from perk_relationships where perk_relationships.child=perks._id) is null", new String[]{Long.toString(mCharacter_id)}, null);
+			c = managedQuery(Vcharacter_perks.CONTENT_URI, new String[]{Vcharacter_perks._ID, Vcharacter_perks.character_id, Vcharacter_perks.character_name, Vcharacter_perks.value, Vcharacter_perks.perk, Vcharacter_perks.perk_name, Vcharacter_perks.max, Vcharacter_perks.child, Vcharacter_perks.desc}, "_id=? and (select perk_relationships._id from perk_relationships where perk_relationships.child=vcharacter_perks.perk) is null", new String[]{Long.toString(mCharacter_id)}, null);
 		}
-		SimpleCursorAdapter sca = new SimpleCursorAdapter(this, R.layout.perkrow, c, new String[] {Perks.name}, new int[] {R.id.perkname});
+		SimpleCursorAdapter sca = new SimpleCursorAdapter(this, R.layout.perkrow, c, new String[] {Vcharacter_perks.perk_name}, new int[] {R.id.perkname});
 		sca.setViewBinder(mViewBinder);
 		setListAdapter(sca);
 	}
@@ -152,7 +152,6 @@ public class PerkCalculator extends ListActivity {
 				} else {
 					perkadd.setEnabled(false);
 				}
-				// set the add button
 				return true;
 			} else {
 				return false;

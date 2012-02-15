@@ -5,11 +5,6 @@
     <string name="lbl_magicka">Magicka</string>
     <string name="lbl_health">Health</string>
     <string name="lbl_stamina">Stamina</string>
-    <string name="key_preferences">skyrimtools</string>
-    <string name="key_level">level</string>
-    <string name="key_magicka">magicka</string>
-    <string name="key_health">health</string>
-    <string name="key_stamina">stamina</string>
     <string name="lbl_levelup">Level Up</string>
     <string name="lbl_reset">Reset</string>
     <string name="lbl_undo">Undo</string>
@@ -19,7 +14,9 @@
     <string name="lbl_perkadd">Add</string>
     <string name="lbl_perkchild">\u003e</string>
     <string name="lbl_description">Description</string>
-    <string name="lbl_buildcharacter">Build Character</string>
-    <string name="lbl_nocharacters">No Characters</string>
+    <string name="lbl_buildcharacter">Build a character</string>
+    <string name="lbl_nocharacters">No characters</string>
     <string name="lbl_save">Save</string>
+    <string name="lbl_name">Name</string>
+    <string name="lbl_characterbuilder">Character Builder</string>
 </resources>
