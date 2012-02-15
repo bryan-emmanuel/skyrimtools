@@ -19,4 +19,7 @@
     <string name="lbl_perkadd">Add</string>
     <string name="lbl_perkchild">\u003e</string>
     <string name="lbl_description">Description</string>
+    <string name="lbl_buildcharacter">Build Character</string>
+    <string name="lbl_nocharacters">No Characters</string>
+    <string name="lbl_save">Save</string>
 </resources>
