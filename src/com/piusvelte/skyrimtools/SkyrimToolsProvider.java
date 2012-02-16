@@ -155,6 +155,45 @@ public class SkyrimToolsProvider extends ContentProvider {
 		public static final String CONTENT_TYPE = "vnd.android.cursor.dir/vnd.piusvelte." + VIEW_CHARACTERS;
 	}
 	
+	private static final int CHARACTER_PERKS_TEMP = 7;
+	protected static final String TABLE_CHARACTER_PERKS_TEMP = "character_perks_temp";
+	
+	public static final class Character_perks_temp implements BaseColumns {
+		
+		private Character_perks_temp() {
+		}
+		
+		public static final Uri CONTENT_URI = Uri.parse("content://" + AUTHORITY + "/" + TABLE_CHARACTER_PERKS_TEMP);
+
+		public static final String CONTENT_TYPE = "vnd.android.cursor.dir/vnd.piusvelte." + TABLE_CHARACTER_PERKS_TEMP;
+	}
+	
+	private static final int INIT_CHARACTER_PERKS_TEMP = 8;
+	protected static final String INIT_TABLE_CHARACTER_PERKS_TEMP = "init_character_perks_temp";
+	
+	public static final class Init_character_perks_temp implements BaseColumns {
+		
+		private Init_character_perks_temp() {
+		}
+		
+		public static final Uri CONTENT_URI = Uri.parse("content://" + AUTHORITY + "/" + INIT_TABLE_CHARACTER_PERKS_TEMP);
+
+		public static final String CONTENT_TYPE = "vnd.android.cursor.dir/vnd.piusvelte." + INIT_TABLE_CHARACTER_PERKS_TEMP;
+	}
+	
+	private static final int SAVE_CHARACTER_PERKS = 9;
+	protected static final String SAVE_TABLE_CHARACTER_PERKS = "save_character_perks";
+	
+	public static final class Save_character_perks implements BaseColumns {
+		
+		private Save_character_perks() {
+		}
+		
+		public static final Uri CONTENT_URI = Uri.parse("content://" + AUTHORITY + "/" + SAVE_TABLE_CHARACTER_PERKS);
+
+		public static final String CONTENT_TYPE = "vnd.android.cursor.dir/vnd.piusvelte." + SAVE_TABLE_CHARACTER_PERKS;
+	}
+	
 	static {
 		sUriMatcher = new UriMatcher(UriMatcher.NO_MATCH);
 		sUriMatcher.addURI(AUTHORITY, TABLE_PERKS, PERKS);
@@ -195,6 +234,9 @@ public class SkyrimToolsProvider extends ContentProvider {
 		vcharacter_perks_projectionMap.put(Vcharacter_perks.child, Vcharacter_perks.child);
 		vcharacter_perks_projectionMap.put(Vcharacter_perks.desc, Vcharacter_perks.desc);
 		sUriMatcher.addURI(AUTHORITY, VIEW_CHARACTERS, VCHARACTERS);
+		sUriMatcher.addURI(AUTHORITY, TABLE_CHARACTER_PERKS_TEMP, CHARACTER_PERKS_TEMP);
+		sUriMatcher.addURI(AUTHORITY, INIT_TABLE_CHARACTER_PERKS_TEMP, INIT_CHARACTER_PERKS_TEMP);
+		sUriMatcher.addURI(AUTHORITY, SAVE_TABLE_CHARACTER_PERKS, SAVE_CHARACTER_PERKS);
 	}
 
 	@Override
@@ -213,6 +255,9 @@ public class SkyrimToolsProvider extends ContentProvider {
 			break;
 		case CHARACTER_PERKS:
 			count = db.delete(TABLE_CHARACTER_PERKS, selection, selectionArgs);
+			break;
+		case CHARACTER_PERKS_TEMP:
+			count = db.delete(TABLE_CHARACTER_PERKS_TEMP, selection, selectionArgs);
 			break;
 		default:
 			throw new IllegalArgumentException("Unknown URI " + uri);
@@ -236,6 +281,8 @@ public class SkyrimToolsProvider extends ContentProvider {
 			return Vcharacter_perks.CONTENT_TYPE;
 		case VCHARACTERS:
 			return Vcharacters.CONTENT_TYPE;
+		case CHARACTER_PERKS_TEMP:
+			return Character_perks_temp.CONTENT_TYPE;
 		default:
 			throw new IllegalArgumentException("Unknown URI " + uri);
 		}
@@ -265,6 +312,11 @@ public class SkyrimToolsProvider extends ContentProvider {
 		case CHARACTER_PERKS:
 			rowId = db.insert(TABLE_CHARACTER_PERKS, Character_perks._ID, values);
 			returnUri = ContentUris.withAppendedId(Character_perks.CONTENT_URI, rowId);
+			getContext().getContentResolver().notifyChange(returnUri, null);
+			break;
+		case CHARACTER_PERKS_TEMP:
+			rowId = db.insert(TABLE_CHARACTER_PERKS_TEMP, Character_perks_temp._ID, values);
+			returnUri = ContentUris.withAppendedId(Character_perks_temp.CONTENT_URI, rowId);
 			getContext().getContentResolver().notifyChange(returnUri, null);
 			break;
 		default:
@@ -310,6 +362,9 @@ public class SkyrimToolsProvider extends ContentProvider {
 			qb.setTables(VIEW_CHARACTERS);
 			qb.setProjectionMap(characters_projectionMap);
 			break;
+		case CHARACTER_PERKS_TEMP:
+			qb.setTables(TABLE_CHARACTER_PERKS_TEMP);
+			qb.setProjectionMap(vcharacter_perks_projectionMap);
 		default:
 			throw new IllegalArgumentException("Unknown URI " + uri);
 		}
@@ -337,13 +392,25 @@ public class SkyrimToolsProvider extends ContentProvider {
 		case CHARACTER_PERKS:
 			count = db.update(TABLE_CHARACTER_PERKS, values, selection, selectionArgs);
 			break;
+		case CHARACTER_PERKS_TEMP:
+			count = db.update(TABLE_CHARACTER_PERKS_TEMP, values, selection, selectionArgs);
+			break;
+		case INIT_CHARACTER_PERKS_TEMP:
+			db.execSQL("delete from " + TABLE_CHARACTER_PERKS_TEMP + ";");
+			db.execSQL("insert into " + TABLE_CHARACTER_PERKS_TEMP + " select * from " + TABLE_CHARACTER_PERKS + ";");
+			count = 0;
+			break;
+		case SAVE_CHARACTER_PERKS:
+			db.execSQL("delete from " + TABLE_CHARACTER_PERKS + ";");
+			db.execSQL("insert into " + TABLE_CHARACTER_PERKS + " select * from " + TABLE_CHARACTER_PERKS_TEMP + ";");
+			count = 0;
+			break;
 		default:
 			throw new IllegalArgumentException("Unknown URI " + uri);
 		}
 		getContext().getContentResolver().notifyChange(uri, null);
 		return count;
 	}
-
 
 	private static class DatabaseHelper extends SQLiteOpenHelper {
 
@@ -384,6 +451,7 @@ public class SkyrimToolsProvider extends ContentProvider {
 					+ Character_perks.character + " integer,"
 					+ Character_perks.perk + " integer,"
 					+ Character_perks.value + " integer);");
+			db.execSQL("create table if not exists " + TABLE_CHARACTER_PERKS_TEMP + " as select * from " + TABLE_CHARACTER_PERKS + ";");
 			db.execSQL("create view if not exists " + VIEW_CHARACTER_PERKS + " as select a."
 					+ Character_perks._ID + " as " + Vcharacter_perks._ID
 					+ ",b." + Characters._ID + " as " + Vcharacter_perks.character_id
@@ -395,7 +463,7 @@ public class SkyrimToolsProvider extends ContentProvider {
 					+ ",case when (select d." + Perks.child + " from " + TABLE_PERK_RELATIONSHIPS + " d where d." + Perks._ID + "=b." + Perks._ID + ") is null then 0 else 1 end as " + Vcharacter_perks.child
 					+ ",c." + Perks.desc + " as " + Vcharacter_perks.desc
 					+ " from "
-					+ TABLE_CHARACTER_PERKS
+					+ TABLE_CHARACTER_PERKS_TEMP
 					+ " a," + TABLE_CHARACTERS
 					+ " b," + TABLE_PERKS
 					+ " c where b." + Characters._ID + "=a." + Character_perks.character
@@ -558,7 +626,6 @@ public class SkyrimToolsProvider extends ContentProvider {
 
 		@Override
 		public void onUpgrade(SQLiteDatabase db, int oldVersion, int newVersion) {
-			
 		}
 	}
 	

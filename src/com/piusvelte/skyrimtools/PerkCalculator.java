@@ -6,7 +6,9 @@ import static com.piusvelte.skyrimtools.CharacterBuilder.RESET_ID;
 import static com.piusvelte.skyrimtools.CharacterBuilder.SAVE_ID;
 
 import com.piusvelte.skyrimtools.SkyrimToolsProvider.Character_perks;
-import com.piusvelte.skyrimtools.SkyrimToolsProvider.Perks;
+import com.piusvelte.skyrimtools.SkyrimToolsProvider.Character_perks_temp;
+import com.piusvelte.skyrimtools.SkyrimToolsProvider.Init_character_perks_temp;
+import com.piusvelte.skyrimtools.SkyrimToolsProvider.Save_character_perks;
 import com.piusvelte.skyrimtools.SkyrimToolsProvider.Vcharacter_perks;
 
 import android.app.AlertDialog;
@@ -49,6 +51,7 @@ public class PerkCalculator extends ListActivity {
 			}
 		}
 		registerForContextMenu(getListView());
+		getContentResolver().update(Init_character_perks_temp.CONTENT_URI, null, null, null);
 	}
 
 	@Override
@@ -66,9 +69,10 @@ public class PerkCalculator extends ListActivity {
 			ContentValues values = new ContentValues();
 			values.put(Character_perks.value, 0);
 			getContentResolver().update(Character_perks.CONTENT_URI, values, Character_perks._ID + "=?", new String[]{Long.toString(mCharacter_id)});
+			getContentResolver().update(Init_character_perks_temp.CONTENT_URI, null, null, null);
 			return true;
 		case SAVE_ID:
-			//TODO
+			getContentResolver().update(Save_character_perks.CONTENT_URI, null, null, null);
 			return true;
 		}
 		return super.onOptionsItemSelected(item);
@@ -137,7 +141,6 @@ public class PerkCalculator extends ListActivity {
 				}
 				Button perkadd = (Button) (viewParent).findViewById(R.id.perkadd);
 				if (value < max) {
-					// if there are sub-items, they'll load through onClick
 					perkadd.setOnClickListener(new OnClickListener() {
 
 						@Override
@@ -145,7 +148,7 @@ public class PerkCalculator extends ListActivity {
 							// load PerkCalculator with this category
 							ContentValues values = new ContentValues();
 							values.put(Character_perks.value, value + 1);
-							getContentResolver().update(Character_perks.CONTENT_URI, values, Character_perks._ID + "=?", new String[]{Long.toString(id)});
+							getContentResolver().update(Character_perks_temp.CONTENT_URI, values, Character_perks._ID + "=?", new String[]{Long.toString(id)});
 						}
 
 					});

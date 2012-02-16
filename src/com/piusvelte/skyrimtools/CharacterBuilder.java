@@ -1,6 +1,7 @@
 package com.piusvelte.skyrimtools;
 
 import com.piusvelte.skyrimtools.SkyrimToolsProvider.Character_perks;
+import com.piusvelte.skyrimtools.SkyrimToolsProvider.Character_perks_temp;
 import com.piusvelte.skyrimtools.SkyrimToolsProvider.Characters;
 import com.piusvelte.skyrimtools.SkyrimToolsProvider.Perks;
 import com.piusvelte.skyrimtools.SkyrimToolsProvider.PerksColumns;
@@ -77,6 +78,25 @@ public class CharacterBuilder extends ListActivity implements OnClickListener {
 										}		
 									}})
 						.show();
+					}
+					
+				});
+				btn_name.setOnLongClickListener(new View.OnLongClickListener() {
+
+					@Override
+					public boolean onLongClick(View v) {
+						new AlertDialog.Builder(CharacterBuilder.this)
+						.setItems(new String[]{getString(R.string.lbl_deletecharacter)}, 
+								new DialogInterface.OnClickListener() {
+									@Override
+									public void onClick(DialogInterface dialog, int which) {
+										dialog.dismiss();
+										getContentResolver().delete(Character_perks.CONTENT_URI, Character_perks.character + "=?", new String[]{Long.toString(id)});
+										getContentResolver().delete(Character_perks_temp.CONTENT_URI, Character_perks.character + "=?", new String[]{Long.toString(id)});
+										getContentResolver().delete(Characters.CONTENT_URI, Characters._ID + "=?", new String[]{Long.toString(id)});
+									}})
+						.show();
+						return true;
 					}
 					
 				});
