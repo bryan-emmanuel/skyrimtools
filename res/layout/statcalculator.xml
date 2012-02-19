@@ -3,24 +3,31 @@
     android:layout_width="fill_parent"
     android:layout_height="fill_parent" >
 
+    <LinearLayout
+        android:id="@+id/ads"
+        android:layout_width="fill_parent"
+        android:layout_height="wrap_content"
+        android:layout_alignParentTop="true" >
+    </LinearLayout>
+
     <TextView
         android:id="@+id/fld_name"
         android:layout_width="fill_parent"
         android:layout_height="wrap_content"
-        android:layout_alignParentTop="true" />
+        android:layout_below="@id/ads" />
 
     <Button
         android:id="@+id/btn_levelup"
         android:layout_width="fill_parent"
         android:layout_height="wrap_content"
-        android:text="@string/lbl_levelup"
-        android:layout_alignParentBottom="true" />
+        android:layout_alignParentBottom="true"
+        android:text="@string/lbl_levelup" />
 
     <ScrollView
         android:layout_width="fill_parent"
         android:layout_height="fill_parent"
-        android:layout_below="@id/fld_name"
         android:layout_above="@id/btn_levelup"
+        android:layout_below="@id/fld_name"
         android:orientation="vertical" >
 
         <LinearLayout

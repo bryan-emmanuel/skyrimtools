@@ -19,6 +19,7 @@ import android.database.sqlite.SQLiteOpenHelper;
 import android.database.sqlite.SQLiteQueryBuilder;
 import android.net.Uri;
 import android.provider.BaseColumns;
+import android.util.Log;
 
 public class SkyrimToolsProvider extends ContentProvider {
 	public static final String AUTHORITY = "com.piusvelte.skyrimtools.SkyrimToolsProvider";
@@ -128,18 +129,19 @@ public class SkyrimToolsProvider extends ContentProvider {
 
 		public static final String CONTENT_TYPE = "vnd.android.cursor.dir/vnd.piusvelte." + VIEW_CHARACTER_PERKS;
 
-		public static final String character_id = "character_id";
+		public static final String character = "character";
 		public static final String character_name = "character_name";
 		public static final String value = "value";
 		public static final String perk = "perk";
 		public static final String perk_name = "perk_name";
 		public static final String max = "max";
-		public static final String child = "child";
+		public static final String hasChildren = "hasChildren";
 		public static final String desc = "desc";
+		public static final String parentHasValue = "parentHasValue";
 	}
 
 	protected static enum Vcharacter_perksColumns {
-		_id, character_id, character_name, value, perk, perk_name, max, child, desc
+		_id, character, character_name, value, perk, perk_name, max, hasChildren, desc, parentHasValue
 	}
 	
 	private static final int VCHARACTERS = 6;
@@ -225,14 +227,15 @@ public class SkyrimToolsProvider extends ContentProvider {
 		sUriMatcher.addURI(AUTHORITY, VIEW_CHARACTER_PERKS, VCHARACTER_PERKS);
 		vcharacter_perks_projectionMap = new HashMap<String, String>();
 		vcharacter_perks_projectionMap.put(Vcharacter_perks._ID, Vcharacter_perks._ID);
-		vcharacter_perks_projectionMap.put(Vcharacter_perks.character_id, Vcharacter_perks.character_id);
+		vcharacter_perks_projectionMap.put(Vcharacter_perks.character, Vcharacter_perks.character);
 		vcharacter_perks_projectionMap.put(Vcharacter_perks.character_name, Vcharacter_perks.character_name);
 		vcharacter_perks_projectionMap.put(Vcharacter_perks.value, Vcharacter_perks.value);
 		vcharacter_perks_projectionMap.put(Vcharacter_perks.perk, Vcharacter_perks.perk);
 		vcharacter_perks_projectionMap.put(Vcharacter_perks.perk_name, Vcharacter_perks.perk_name);
 		vcharacter_perks_projectionMap.put(Vcharacter_perks.max, Vcharacter_perks.max);
-		vcharacter_perks_projectionMap.put(Vcharacter_perks.child, Vcharacter_perks.child);
+		vcharacter_perks_projectionMap.put(Vcharacter_perks.hasChildren, Vcharacter_perks.hasChildren);
 		vcharacter_perks_projectionMap.put(Vcharacter_perks.desc, Vcharacter_perks.desc);
+		vcharacter_perks_projectionMap.put(Vcharacter_perks.parentHasValue, Vcharacter_perks.parentHasValue);
 		sUriMatcher.addURI(AUTHORITY, VIEW_CHARACTERS, VCHARACTERS);
 		sUriMatcher.addURI(AUTHORITY, TABLE_CHARACTER_PERKS_TEMP, CHARACTER_PERKS_TEMP);
 		sUriMatcher.addURI(AUTHORITY, INIT_TABLE_CHARACTER_PERKS_TEMP, INIT_CHARACTER_PERKS_TEMP);
@@ -355,6 +358,11 @@ public class SkyrimToolsProvider extends ContentProvider {
 			qb.setProjectionMap(character_perks_projectionMap);
 			break;
 		case VCHARACTER_PERKS:
+			Log.v("SkyrimToolsProvider", "query:"+VIEW_CHARACTER_PERKS);
+			Log.v("SkyrimToolsProvider", "selection:"+selection);
+			for (String s : selectionArgs) {
+				Log.v("SkyrimToolsProvider", "selectionArg:"+s);
+			}
 			qb.setTables(VIEW_CHARACTER_PERKS);
 			qb.setProjectionMap(vcharacter_perks_projectionMap);
 			break;
@@ -454,14 +462,15 @@ public class SkyrimToolsProvider extends ContentProvider {
 			db.execSQL("create table if not exists " + TABLE_CHARACTER_PERKS_TEMP + " as select * from " + TABLE_CHARACTER_PERKS + ";");
 			db.execSQL("create view if not exists " + VIEW_CHARACTER_PERKS + " as select a."
 					+ Character_perks._ID + " as " + Vcharacter_perks._ID
-					+ ",b." + Characters._ID + " as " + Vcharacter_perks.character_id
+					+ ",b." + Characters._ID + " as " + Vcharacter_perks.character
 					+ ",b." + Characters.name + " as " + Vcharacter_perks.character_name
 					+ ",case when a." + Character_perks.value + " is null then " + DEFAULT_VALUE + " else a." + Character_perks.value + " end as " + Vcharacter_perks.value
 					+ ",c." + Perks._ID + " as " + Vcharacter_perks.perk
 					+ ",c." + Perks.name + " as " + Vcharacter_perks.perk_name
 					+ ",c." + Perks.max + " as " + Vcharacter_perks.max
-					+ ",case when (select d." + Perks.child + " from " + TABLE_PERK_RELATIONSHIPS + " d where d." + Perks._ID + "=b." + Perks._ID + ") is null then 0 else 1 end as " + Vcharacter_perks.child
+					+ ",case when (select d." + Perks.child + " from " + TABLE_PERK_RELATIONSHIPS + " d where d." + Perk_relationships.parent + "=b." + Perks._ID + ") is null then 0 else 1 end as " + Vcharacter_perks.hasChildren
 					+ ",c." + Perks.desc + " as " + Vcharacter_perks.desc
+					+ ",case when (select e." + Character_perks.value + " from " + TABLE_CHARACTER_PERKS_TEMP + " e," + TABLE_PERKS + " f where f." + Perks._ID + "=e." + Character_perks.perk + " and (e." + Character_perks.value + ">0 or f." + Perks.max + "=0) and e." + Character_perks.perk + "=b." + Perks._ID + ") is null then 0 else 1 end as " + Vcharacter_perks.parentHasValue
 					+ " from "
 					+ TABLE_CHARACTER_PERKS_TEMP
 					+ " a," + TABLE_CHARACTERS
@@ -471,68 +480,68 @@ public class SkyrimToolsProvider extends ContentProvider {
 			// initial data
 			//THE WARRIOR
 			//Archery
-			long id = initCategory(db, "Overdraw", 5, initCategory(db, "Archery", 0, ""), "");
-			long id2 = initCategory(db, "Eagle Eye", 1, id, "");
-			initCategory(db, "Steady Hand", 2, id2, "");
+			long id = initCategory(db, "Overdraw", 5, initCategory(db, "Archery", 0, ""), "Bows do 20% more damage.(+20% per additional rank)");
+			long id2 = initCategory(db, "Eagle Eye", 1, id, "Pressing Block while aiming will zoom in your view");
+			initCategory(db, "Steady Hand", 2, id2, "Zooming in with a bow slows time by 25% (50% for second rank)");
 			initRelationship(db,
-					initCategory(db, "Quick Shot", 1, initCategory(db, "Power Shot", 1, id2, ""), ""), 
-					initCategory(db, "Bullseye", 1, initCategory(db, "Ranger", 1, initCategory(db, "Hunter's Discipline", 1, initCategory(db, "Critical Shot", 3, id, ""), ""), ""), ""));
+					initCategory(db, "Quick Shot", 1, initCategory(db, "Power Shot", 1, id2, "Arrows stagger all but the largest opponents 50% of the time"), "Can draw a bow 30% faster"), 
+					initCategory(db, "Bullseye", 1, initCategory(db, "Ranger", 1, initCategory(db, "Hunter's Discipline", 1, initCategory(db, "Critical Shot", 3, id, "10% chance of a critical hit that does extra damage (+5% per additional rank, +10% / +15% / +20% critical damage for the 1st / 2nd / 3rd rank)"), "Recover twice as many arrows from dead bodies"), "Able to move faster with a drawn bow"), "15% chance of paralyzing the target for a few seconds"));
 			//Block
-			id = initCategory(db, "Shield Wall", 5, initCategory(db, "Block", 0, ""), "");
-			initCategory(db, "Quick Reflexes", 1, id, "");
+			id = initCategory(db, "Shield Wall", 5, initCategory(db, "Block", 0, ""), "Blocking is 20% more effective (+5% per additional rank)");
+			initCategory(db, "Quick Reflexes", 1, id, "Time slows down if you are blocking during an enemy's power attack");
 			initRelationship(db,
-					initCategory(db, "Disarming Bash", 1, initCategory(db, "Deadly Bash", 1, initCategory(db, "Power Bash", 1, id, ""), ""), ""),
-					initCategory(db, "Shield Charge", 1, initCategory(db, "Block Runner", 1, initCategory(db, "Elemental Protection", 1, initCategory(db, "Deflect Arrows", 1, id, ""), ""), ""), ""));
+					initCategory(db, "Disarming Bash", 1, initCategory(db, "Deadly Bash", 1, initCategory(db, "Power Bash", 1, id, "Able to do a power bash"), "Bashing does five times more damage"), "Chance to disarm when power bashing"),
+					initCategory(db, "Shield Charge", 1, initCategory(db, "Block Runner", 1, initCategory(db, "Elemental Protection", 1, initCategory(db, "Deflect Arrows", 1, id, "Arrows that hit the shield do no damage"), "Blocking with a shield reduces incoming fire, frost and shock damage by 50%"), "Able to move faster with a shield raised"), "Sprinting with a raised shield knocks down most targets"));
 			//Heavy Armor
-			id = initCategory(db, "Juggernaut", 5, initCategory(db, "Heavy Armor", 0, ""), "");
-			initCategory(db, "Conditioning", 1, initCategory(db, "Cushioned", 1, initCategory(db, "Fists of Steel", 1, id, ""), ""), "");
-			initCategory(db, "Reflect Blows", 1, initCategory(db, "Matching Set", 1, initCategory(db, "Tower of Strength", 1, initCategory(db, "Well Fitted", 1, id, ""), ""), ""), "");
+			id = initCategory(db, "Juggernaut", 5, initCategory(db, "Heavy Armor", 0, ""), "Increases armor rating for Heavy Armor by 20% (+20% per additional rank)");
+			initCategory(db, "Conditioning", 1, initCategory(db, "Cushioned", 1, initCategory(db, "Fists of Steel", 1, id, "Unarmed attacks with Heavy Armor gaunlets do their armor rating in extra damage"), "Half damage from falling if wearing all Heavy Armor: head, chest, hands, feet"), "Heavy Armor weighs nothing and doesn't slow you down when worn");
+			initCategory(db, "Reflect Blows", 1, initCategory(db, "Matching Set", 1, initCategory(db, "Tower of Strength", 1, initCategory(db, "Well Fitted", 1, id, "25% armor bonus if wearing all Heavy Armor: head, chest, hands, feet"), "50% less stagger time when wearing only Heavy Armor"), "Additional 25% armor bonus if wearing a matched set of Heavy Armor"), "10% chance to reflect melee damage back to the enemy while wearing all Heavy Armor: head, chest, hands, feet");
 			//One Handed
-			id = initCategory(db, "Armsman", 5, initCategory(db, "One Handed", 0, ""), "");
-			initCategory(db, "Hack and Slash", 3, id, "");
-			id2 = initCategory(db, "Fighting Stance", 1, id, "");
+			id = initCategory(db, "Armsman", 5, initCategory(db, "One Handed", 0, ""), "One-Handed weapons do 20% more damage (+20% per additional rank)");
+			initCategory(db, "Hack and Slash", 3, id, "Attacks with war axes cause extra bleeding damage (Additional ranks raise the bleeding damage)");
+			id2 = initCategory(db, "Fighting Stance", 1, id, "Power attacks with one-handed weapons cost 20% less stamina");
 			initRelationship(db,
-					initCategory(db, "Critical Charge", 1, id2, ""),
-					initCategory(db, "Paralyzing Strike", 1, initCategory(db, "Savage Strike", 1, id2, ""), ""));
-			initCategory(db, "Bone Breaker", 3, id, "");
-			initCategory(db, "Bladesman", 3, id, "");
-			initCategory(db, "Dual Savagery", 1, initCategory(db, "Dual Flurry", 2, id, ""), "");
+					initCategory(db, "Critical Charge", 1, id2, "Can do a one-handed power attack while sprinting that deals double critical damage"),
+					initCategory(db, "Paralyzing Strike", 1, initCategory(db, "Savage Strike", 1, id2, "Standing power attacks do 25% bonus damage with a chance to decapitate your enemies"), "Backwards power attacks have a 25% chance to paralyze the target"));
+			initCategory(db, "Bone Breaker", 3, id, "Attacks with maces ignore 25% of armor (+25% per additional rank)");
+			initCategory(db, "Bladesman", 3, id, "Attacks with swords have a 10% chance of doing critical damage (+5% per additional rank)");
+			initCategory(db, "Dual Savagery", 1, initCategory(db, "Dual Flurry", 2, id, "Dual wielding attacks are 20% faster (35% for second rank)"), "Dual wielding power attacks do 50% bonus damage");
 			//Two Handed
-			id = initCategory(db, "Barbarian", 5, initCategory(db, "Two Handed", 0, ""), "");
-			initCategory(db, "Limbsplitter", 3, id, "");
-			id2 = initCategory(db, "Champion's Stance", 1, id, "");
+			id = initCategory(db, "Barbarian", 5, initCategory(db, "Two Handed", 0, ""), "Two-Handed weapons do 20% more damage (+20% per additional rank)");
+			initCategory(db, "Limbsplitter", 3, id, "Attacks with battle axes cause extra bleeding damage (Additional ranks increase the bleeding damage)");
+			id2 = initCategory(db, "Champion's Stance", 1, id, "Power attacks with two-handed weapons cost 25% less stamina");
 			initCategory(db, "Warmaster", 1,
 					initRelationship(db,
-							initCategory(db, "Great Critical Charge", 1, id2, ""),
-							initCategory(db, "Sweep", 1, initCategory(db, "Devastating Blow", 1, id2, ""), "")), "");
-			initCategory(db, "Deep Wounds", 3, id, "");
-			initCategory(db, "Skull Crusher", 3, id, "");
+							initCategory(db, "Great Critical Charge", 1, id2, "Can do a two-handed power attack while sprinting that does double critical damage"),
+							initCategory(db, "Sweep", 1, initCategory(db, "Devastating Blow", 1, id2, "Standing power attacks do 25% bonus damage with a chance to decapitate your enemies"), "Sideways power attacks with two-handed weapons hit all targets in front of you")), "Backwards power attack has a 25% chance to paralyze the target");
+			initCategory(db, "Deep Wounds", 3, id, "Attacks with greatswords have a 10% chance of doing critical damage (+5% per additional rank)");
+			initCategory(db, "Skull Crusher", 3, id, "Attacks with warhammers ignore 25% of armor (+25% per additional rank)");
 			//Smithing
-			id = initCategory(db, "Steel Smithing", 1, initCategory(db, "Smithing", 0, ""), "");
-			initCategory(db, "Arcane Blacksmith", 1, id, "");
+			id = initCategory(db, "Steel Smithing", 1, initCategory(db, "Smithing", 0, ""), "Can create Steel armor and weapons at forges, and improve them twice as much");
+			initCategory(db, "Arcane Blacksmith", 1, id, "You can improve magical weapons and armor");
 			initRelationship(db,
-					initCategory(db, "Glass Smith", 1, initCategory(db, "Advanced Armors", 1, initCategory(db, "Elven Smithing", 1, id, ""), ""), ""),
-					initCategory(db, "Dragon Smithing", 1, initCategory(db, "Daedric Smithing", 1, initCategory(db, "Ebony Smithing", 1, initCategory(db, "Orcish Smithing", 1, initCategory(db, "Dwarven Smithing", 1, id, ""), ""), ""), ""), ""));
+					initCategory(db, "Glass Smith", 1, initCategory(db, "Advanced Armors", 1, initCategory(db, "Elven Smithing", 1, id, "Can create Elven armor and weapons at forges, and improve them twice as much"), "Can create Scaled and Plate armor at forges, and improve them twice as much"), "Can create Glass armor and weapons at forges, and improve them twice as much"),
+					initCategory(db, "Dragon Smithing", 1, initCategory(db, "Daedric Smithing", 1, initCategory(db, "Ebony Smithing", 1, initCategory(db, "Orcish Smithing", 1, initCategory(db, "Dwarven Smithing", 1, id, "Can create Dwarven armor and weapons at forges, and improve them twice as much"), "Can create Orcish armor and weapons at forges, and improve them twice as much"), "Can create Ebony armor and weapons at forges, and improve them twice as much"), "Can create Daedric armor and weapons at forges, and improve them twice as much"), "Can create Dragon armor at forges, and improve them twice as much (Light and Heavy Dragon Armor)"));
 			//THE MAGE
 			//Alteration
-			id = initCategory(db, "Novice Alteration", 1, initCategory(db, "Alteration", 0, ""), "");
-			initCategory(db, "Alteration Dual Casting", 1, id, "");
-			id2 = initCategory(db, "Apprentice Alteration", 1, id, "");
-			initCategory(db, "Mage Armor", 3, id2, "");
-			initCategory(db, "Magic Resistance", 3, id2, "");
-			id2 = initCategory(db, "Adept Alteration", 1, id2, "");
-			initCategory(db, "Stability", 1, id2, "");
-			id2 = initCategory(db, "Expert Alteration", 1, id2, "");
-			initCategory(db, "Atronach", 1, id2, "");
-			initCategory(db, "Master Alteration", 1, id2, "");
+			id = initCategory(db, "Novice Alteration", 1, initCategory(db, "Alteration", 0, ""), "Cast Novice level Alteration spells for half magicka");
+			initCategory(db, "Alteration Dual Casting", 1, id, "Dual casting an Alteration spell overcharges the effects into an even more powerful version");
+			id2 = initCategory(db, "Apprentice Alteration", 1, id, "Cast Apprentice level Alteration spells for half magicka");
+			initCategory(db, "Mage Armor", 3, id2, "Protection spells like Stoneflesh are 2x as strong if not wearing armor (+.5x per additional rank)");
+			initCategory(db, "Magic Resistance", 3, id2, "Blocks 10% of a spells effect (+10% per additional rank)");
+			id2 = initCategory(db, "Adept Alteration", 1, id2, "Cast Adept level Alteration spells for half magicka");
+			initCategory(db, "Stability", 1, id2, "Alteration spells have greater duration");
+			id2 = initCategory(db, "Expert Alteration", 1, id2, "Cast Expert level Alteration spells for half magicka");
+			initCategory(db, "Atronach", 1, id2, "Absorb 30% of the magicka of any spells that hit you");
+			initCategory(db, "Master Alteration", 1, id2, "Cast Master level Alteration spells for half magicka");
 			//Conjuration
-			id = initCategory(db, "Novice Conjuration", 1, initCategory(db, "Conjuration", 0, ""), "");
+			id = initCategory(db, "Novice Conjuration", 1, initCategory(db, "Conjuration", 0, ""), "Cast Novice level Conjuration spells for half magicka");
 			initRelationship(db,
-					initCategory(db, "Elemental Potency", 1, initCategory(db, "Astromancy", 1, initCategory(db, "Summoner", 1, id, ""), ""), ""),
-					initCategory(db, "Twin Souls", 1, initCategory(db, "Dark Souls", 1, initCategory(db, "Necromancy", 1, id, ""), ""), ""));
-			initCategory(db, "Conjuration Dual Casting", 1, id, "");
-			initCategory(db, "Oblivion", 1, initCategory(db, "Soul Stealer", 1, initCategory(db, "Mystic Binding", 1, id, ""), ""), "");
-			initCategory(db, "Master Conjuration", 1, initCategory(db, "Expert Conjuration", 1, initCategory(db, "Adept Conjuration", 1, initCategory(db, "Apprentice Conjuration", 1, id, ""), ""), ""), "");
+					initCategory(db, "Elemental Potency", 1, initCategory(db, "Astromancy", 1, initCategory(db, "Summoner", 1, id, "Can summon atronachs or raise undead 2x as far away (3x for second rank)"), "Double duration for conjured atronachs"), "Conjured atronachs are 50% more powerful"),
+					initCategory(db, "Twin Souls", 1, initCategory(db, "Dark Souls", 1, initCategory(db, "Necromancy", 1, id, "Greater duration for reanimated undead"), "Reanimated undead have 100 points more health"), "You can have two atronachs or reanimated zombies"));
+			initCategory(db, "Conjuration Dual Casting", 1, id, "Dual casting a Conjuration spell overcharges the effects into an even more powerful version (Cannot conjure two summons/reanimations)");
+			initCategory(db, "Oblivion Binding", 1, initCategory(db, "Soul Stealer", 1, initCategory(db, "Mystic Binding", 1, id, "Bound weapons do more damage"), "Bound weapons cast Soul Trap on targets"), "Bound weapons will banish summoned creatures and turn raised ones");
+			initCategory(db, "Master Conjuration", 1, initCategory(db, "Expert Conjuration", 1, initCategory(db, "Adept Conjuration", 1, initCategory(db, "Apprentice Conjuration", 1, id, "Cast Apprentice level Conjuration spells for half magicka"), "Cast Adept level Conjuration spells for half magicka"), "Cast Expert level Conjuration spells for half magicka"), "Cast Master level Conjuration spells for half magicka");
 			//Destruction
 			id = initCategory(db, "Novice Destruction", 1, initCategory(db, "Destruction", 0, ""), "");
 			initCategory(db, "Intense Flames", 1, initCategory(db, "Augmented Flames", 1, id, ""), "");

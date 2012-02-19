@@ -9,17 +9,21 @@ import static com.piusvelte.skyrimtools.CharacterBuilder.EXTRA_CHARACTER_NAME;
 import static com.piusvelte.skyrimtools.CharacterBuilder.RESET_ID;
 import static com.piusvelte.skyrimtools.CharacterBuilder.SAVE_ID;
 import static com.piusvelte.skyrimtools.CharacterBuilder.UNDO_ID;
+import static com.piusvelte.skyrimtools.Main.GOOGLE_AD_ID;
 
+import com.google.ads.*;
 import com.piusvelte.skyrimtools.SkyrimToolsProvider.Characters;
 import com.piusvelte.skyrimtools.SkyrimToolsProvider.CharactersColumns;
 import com.piusvelte.skyrimtools.SkyrimToolsProvider.Vcharacters;
 
 import android.app.Activity;
 import android.app.AlertDialog;
+import android.app.ProgressDialog;
 import android.content.ContentValues;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.database.Cursor;
+import android.os.AsyncTask;
 import android.os.Bundle;
 import android.view.Menu;
 import android.view.MenuItem;
@@ -27,6 +31,7 @@ import android.view.View;
 import android.view.View.OnClickListener;
 import android.widget.Button;
 import android.widget.EditText;
+import android.widget.LinearLayout;
 import android.widget.TextView;
 
 public class StatCalculator extends Activity implements OnClickListener {
@@ -44,6 +49,11 @@ public class StatCalculator extends Activity implements OnClickListener {
 	public void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
 		setContentView(R.layout.statcalculator);
+		if (getPackageName().toLowerCase().contains("free")) {
+			AdView adView = new AdView(this, AdSize.BANNER, GOOGLE_AD_ID);
+			((LinearLayout) findViewById(R.id.ads)).addView(adView);
+			adView.loadAd(new AdRequest());
+		}
 		Intent i = getIntent();
 		if (i != null) {
 			if (i.hasExtra(EXTRA_CHARACTER_ID)) {
@@ -72,21 +82,86 @@ public class StatCalculator extends Activity implements OnClickListener {
 
 	@Override
 	public boolean onOptionsItemSelected(MenuItem item) {
-		ContentValues values = new ContentValues();
+		final ProgressDialog loadingDialog;
+		final AsyncTask<Void, Void, Void> asyncTask;
 		switch (item.getItemId()) {
 		case RESET_ID:
-			values.put(Characters.level, DEFAULT_LEVEL);
-			values.put(Characters.magicka, DEFAULT_MAGICKA);
-			values.put(Characters.health, DEFAULT_HEALTH);
-			values.put(Characters.stamina, DEFAULT_STAMINA);
-			getContentResolver().update(Characters.CONTENT_URI, values, Characters._ID + "=?", new String[]{Long.toString(mCharacter_id)});
+			loadingDialog = new ProgressDialog(this);
+			asyncTask = new AsyncTask<Void, Void, Void>() {
+
+				@Override
+				protected Void doInBackground(Void... arg0) {
+					ContentValues values = new ContentValues();
+					values.put(Characters.level, DEFAULT_LEVEL);
+					values.put(Characters.magicka, DEFAULT_MAGICKA);
+					values.put(Characters.health, DEFAULT_HEALTH);
+					values.put(Characters.stamina, DEFAULT_STAMINA);
+					getContentResolver().update(Characters.CONTENT_URI, values, Characters._ID + "=?", new String[]{Long.toString(mCharacter_id)});
+					return null;
+				}
+
+				@Override
+				protected void onPostExecute(Void result) {
+					if (loadingDialog.isShowing()) {
+						loadingDialog.dismiss();
+					}
+				}
+			};
+			loadingDialog.setMessage(getString(R.string.msg_loading));
+			loadingDialog.setCancelable(true);
+			loadingDialog.setOnCancelListener(new DialogInterface.OnCancelListener() {				
+				@Override
+				public void onCancel(DialogInterface dialog) {
+					if (!asyncTask.isCancelled()) asyncTask.cancel(true);
+				}
+			});
+			loadingDialog.setButton(ProgressDialog.BUTTON_NEGATIVE, getString(android.R.string.cancel), new DialogInterface.OnClickListener() {
+				@Override
+				public void onClick(DialogInterface dialog, int which) {
+					dialog.cancel();
+				}
+			});
+			loadingDialog.show();
+			asyncTask.execute();
 			return true;
 		case SAVE_ID:
-			values.put(Characters.level, Integer.parseInt(mFld_level.getEditableText().toString()));
-			values.put(Characters.magicka, Integer.parseInt(mFld_magicka.getEditableText().toString()));
-			values.put(Characters.health, Integer.parseInt(mFld_health.getEditableText().toString()));
-			values.put(Characters.stamina, Integer.parseInt(mFld_stamina.getEditableText().toString()));
-			getContentResolver().update(Characters.CONTENT_URI, values, Characters._ID + "=?", new String[]{Long.toString(mCharacter_id)});
+			loadingDialog = new ProgressDialog(this);
+			asyncTask = new AsyncTask<Void, Void, Void>() {
+
+				@Override
+				protected Void doInBackground(Void... arg0) {
+					ContentValues values = new ContentValues();
+					values.put(Characters.level, Integer.parseInt(mFld_level.getEditableText().toString()));
+					values.put(Characters.magicka, Integer.parseInt(mFld_magicka.getEditableText().toString()));
+					values.put(Characters.health, Integer.parseInt(mFld_health.getEditableText().toString()));
+					values.put(Characters.stamina, Integer.parseInt(mFld_stamina.getEditableText().toString()));
+					getContentResolver().update(Characters.CONTENT_URI, values, Characters._ID + "=?", new String[]{Long.toString(mCharacter_id)});
+					return null;
+				}
+
+				@Override
+				protected void onPostExecute(Void result) {
+					if (loadingDialog.isShowing()) {
+						loadingDialog.dismiss();
+					}
+				}
+			};
+			loadingDialog.setMessage(getString(R.string.msg_loading));
+			loadingDialog.setCancelable(true);
+			loadingDialog.setOnCancelListener(new DialogInterface.OnCancelListener() {				
+				@Override
+				public void onCancel(DialogInterface dialog) {
+					if (!asyncTask.isCancelled()) asyncTask.cancel(true);
+				}
+			});
+			loadingDialog.setButton(ProgressDialog.BUTTON_NEGATIVE, getString(android.R.string.cancel), new DialogInterface.OnClickListener() {
+				@Override
+				public void onClick(DialogInterface dialog, int which) {
+					dialog.cancel();
+				}
+			});
+			loadingDialog.show();
+			asyncTask.execute();
 			return true;
 		case UNDO_ID:
 			mFld_level.setText(Integer.toString(Integer.parseInt(mFld_level.getEditableText().toString()) - 1));

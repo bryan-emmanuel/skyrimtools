@@ -1,5 +1,8 @@
 package com.piusvelte.skyrimtools;
 
+import static com.piusvelte.skyrimtools.Main.GOOGLE_AD_ID;
+
+import com.google.ads.*;
 import com.piusvelte.skyrimtools.SkyrimToolsProvider.Character_perks;
 import com.piusvelte.skyrimtools.SkyrimToolsProvider.Character_perks_temp;
 import com.piusvelte.skyrimtools.SkyrimToolsProvider.Characters;
@@ -8,15 +11,18 @@ import com.piusvelte.skyrimtools.SkyrimToolsProvider.PerksColumns;
 
 import android.app.AlertDialog;
 import android.app.ListActivity;
+import android.app.ProgressDialog;
 import android.content.ContentValues;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.database.Cursor;
+import android.os.AsyncTask;
 import android.os.Bundle;
 import android.view.View;
 import android.view.View.OnClickListener;
 import android.widget.Button;
 import android.widget.EditText;
+import android.widget.LinearLayout;
 import android.widget.SimpleCursorAdapter;
 
 public class CharacterBuilder extends ListActivity implements OnClickListener {
@@ -36,6 +42,11 @@ public class CharacterBuilder extends ListActivity implements OnClickListener {
 	public void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
 		setContentView(R.layout.characterbuilder);
+		if (getPackageName().toLowerCase().contains("free")) {
+			AdView adView = new AdView(this, AdSize.BANNER, GOOGLE_AD_ID);
+			((LinearLayout) findViewById(R.id.ads)).addView(adView);
+			adView.loadAd(new AdRequest());
+		}
 		mBtn_buildcharacter = (Button) findViewById(R.id.btn_buildcharacter);
 		mBtn_buildcharacter.setOnClickListener(this);
 	}
@@ -91,9 +102,40 @@ public class CharacterBuilder extends ListActivity implements OnClickListener {
 									@Override
 									public void onClick(DialogInterface dialog, int which) {
 										dialog.dismiss();
-										getContentResolver().delete(Character_perks.CONTENT_URI, Character_perks.character + "=?", new String[]{Long.toString(id)});
-										getContentResolver().delete(Character_perks_temp.CONTENT_URI, Character_perks.character + "=?", new String[]{Long.toString(id)});
-										getContentResolver().delete(Characters.CONTENT_URI, Characters._ID + "=?", new String[]{Long.toString(id)});
+										final ProgressDialog loadingDialog = new ProgressDialog(CharacterBuilder.this);
+										final AsyncTask<Void, Void, Void> asyncTask = new AsyncTask<Void, Void, Void>() {
+
+											@Override
+											protected Void doInBackground(Void... arg0) {
+												getContentResolver().delete(Character_perks.CONTENT_URI, Character_perks.character + "=?", new String[]{Long.toString(id)});
+												getContentResolver().delete(Character_perks_temp.CONTENT_URI, Character_perks.character + "=?", new String[]{Long.toString(id)});
+												getContentResolver().delete(Characters.CONTENT_URI, Characters._ID + "=?", new String[]{Long.toString(id)});
+												return null;
+											}
+
+											@Override
+											protected void onPostExecute(Void result) {
+												if (loadingDialog.isShowing()) {
+													loadingDialog.dismiss();
+												}
+											}
+										};
+										loadingDialog.setMessage(getString(R.string.msg_loading));
+										loadingDialog.setCancelable(true);
+										loadingDialog.setOnCancelListener(new DialogInterface.OnCancelListener() {				
+											@Override
+											public void onCancel(DialogInterface dialog) {
+												if (!asyncTask.isCancelled()) asyncTask.cancel(true);
+											}
+										});
+										loadingDialog.setButton(ProgressDialog.BUTTON_NEGATIVE, getString(android.R.string.cancel), new DialogInterface.OnClickListener() {
+											@Override
+											public void onClick(DialogInterface dialog, int which) {
+												dialog.cancel();
+											}
+										});
+										loadingDialog.show();
+										asyncTask.execute();
 									}})
 						.show();
 						return true;
@@ -121,20 +163,51 @@ public class CharacterBuilder extends ListActivity implements OnClickListener {
 					dialog.dismiss();
 					String name = mFld_name.getText().toString();
 					if ((name != null) && (name.length() > 0)) {
-						// init character
-						ContentValues values = new ContentValues();
-						values.put(Characters.name, name);
-						long id = Long.parseLong(getContentResolver().insert(Characters.CONTENT_URI, values).getLastPathSegment());
-						Cursor c  = getContentResolver().query(Perks.CONTENT_URI, new String[]{Perks._ID}, null, null, null);
-						if (c.moveToFirst()) {
-							while (!c.isAfterLast()) {
-								values.clear();
-								values.put(Character_perks.character, id);
-								values.put(Character_perks.perk, c.getLong(PerksColumns._id.ordinal()));
-								getContentResolver().insert(Character_perks.CONTENT_URI, values);
-								c.moveToNext();
+						final ProgressDialog loadingDialog = new ProgressDialog(CharacterBuilder.this);
+						final AsyncTask<String, Void, Void> asyncTask = new AsyncTask<String, Void, Void>() {
+
+							@Override
+							protected Void doInBackground(String... name) {
+								// init character
+								ContentValues values = new ContentValues();
+								values.put(Characters.name, name[0]);
+								long id = Long.parseLong(getContentResolver().insert(Characters.CONTENT_URI, values).getLastPathSegment());
+								Cursor c  = getContentResolver().query(Perks.CONTENT_URI, new String[]{Perks._ID}, null, null, null);
+								if (c.moveToFirst()) {
+									while (!c.isAfterLast()) {
+										values.clear();
+										values.put(Character_perks.character, id);
+										values.put(Character_perks.perk, c.getLong(PerksColumns._id.ordinal()));
+										getContentResolver().insert(Character_perks.CONTENT_URI, values);
+										c.moveToNext();
+									}
+								}
+								return null;
 							}
-						}
+
+							@Override
+							protected void onPostExecute(Void result) {
+								if (loadingDialog.isShowing()) {
+									loadingDialog.dismiss();
+								}
+							}
+						};
+						loadingDialog.setMessage(getString(R.string.msg_loading));
+						loadingDialog.setCancelable(true);
+						loadingDialog.setOnCancelListener(new DialogInterface.OnCancelListener() {				
+							@Override
+							public void onCancel(DialogInterface dialog) {
+								if (!asyncTask.isCancelled()) asyncTask.cancel(true);
+							}
+						});
+						loadingDialog.setButton(ProgressDialog.BUTTON_NEGATIVE, getString(android.R.string.cancel), new DialogInterface.OnClickListener() {
+							@Override
+							public void onClick(DialogInterface dialog, int which) {
+								dialog.cancel();
+							}
+						});
+						loadingDialog.show();
+						asyncTask.execute(name);
 					}
 				}
 				

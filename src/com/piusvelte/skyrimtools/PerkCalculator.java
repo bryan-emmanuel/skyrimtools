@@ -4,25 +4,32 @@ import static com.piusvelte.skyrimtools.CharacterBuilder.EXTRA_CHARACTER_ID;
 import static com.piusvelte.skyrimtools.CharacterBuilder.EXTRA_CHARACTER_NAME;
 import static com.piusvelte.skyrimtools.CharacterBuilder.RESET_ID;
 import static com.piusvelte.skyrimtools.CharacterBuilder.SAVE_ID;
+import static com.piusvelte.skyrimtools.Main.GOOGLE_AD_ID;
 
+import com.google.ads.*;
 import com.piusvelte.skyrimtools.SkyrimToolsProvider.Character_perks;
 import com.piusvelte.skyrimtools.SkyrimToolsProvider.Character_perks_temp;
 import com.piusvelte.skyrimtools.SkyrimToolsProvider.Init_character_perks_temp;
+import com.piusvelte.skyrimtools.SkyrimToolsProvider.Perk_relationships;
 import com.piusvelte.skyrimtools.SkyrimToolsProvider.Save_character_perks;
 import com.piusvelte.skyrimtools.SkyrimToolsProvider.Vcharacter_perks;
 
 import android.app.AlertDialog;
 import android.app.ListActivity;
+import android.app.ProgressDialog;
 import android.content.ContentValues;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.database.Cursor;
+import android.os.AsyncTask;
 import android.os.Bundle;
+import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
 import android.view.View.OnClickListener;
 import android.widget.Button;
+import android.widget.LinearLayout;
 import android.widget.RelativeLayout;
 import android.widget.SimpleCursorAdapter;
 import android.widget.TextView;
@@ -37,6 +44,11 @@ public class PerkCalculator extends ListActivity {
 	public void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
 		setContentView(R.layout.perkcalculator);
+		if (getPackageName().toLowerCase().contains("free")) {
+			AdView adView = new AdView(this, AdSize.BANNER, GOOGLE_AD_ID);
+			((LinearLayout) findViewById(R.id.ads)).addView(adView);
+			adView.loadAd(new AdRequest());
+		}
 		Intent i = getIntent();
 		if (i != null) {
 			if (i.hasExtra(EXTRA_CHARACTER_ID)) {
@@ -51,7 +63,40 @@ public class PerkCalculator extends ListActivity {
 			}
 		}
 		registerForContextMenu(getListView());
-		getContentResolver().update(Init_character_perks_temp.CONTENT_URI, null, null, null);
+		Log.v(this.getComponentName().getClassName(), "mCharacter_id:"+mCharacter_id+",mCharacter_name:"+mCharacter_name+",mPerk:"+mPerk);
+		// load the temp table
+		final ProgressDialog loadingDialog = new ProgressDialog(this);
+		final AsyncTask<Void, Void, Void> asyncTask = new AsyncTask<Void, Void, Void>() {
+
+			@Override
+			protected Void doInBackground(Void... arg0) {
+				getContentResolver().update(Init_character_perks_temp.CONTENT_URI, null, null, null);
+				return null;
+			}
+
+			@Override
+			protected void onPostExecute(Void result) {
+				if (loadingDialog.isShowing()) {
+					loadingDialog.dismiss();
+				}
+			}
+		};
+		loadingDialog.setMessage(getString(R.string.msg_loading));
+		loadingDialog.setCancelable(true);
+		loadingDialog.setOnCancelListener(new DialogInterface.OnCancelListener() {				
+			@Override
+			public void onCancel(DialogInterface dialog) {
+				if (!asyncTask.isCancelled()) asyncTask.cancel(true);
+			}
+		});
+		loadingDialog.setButton(ProgressDialog.BUTTON_NEGATIVE, getString(android.R.string.cancel), new DialogInterface.OnClickListener() {
+			@Override
+			public void onClick(DialogInterface dialog, int which) {
+				dialog.cancel();
+			}
+		});
+		loadingDialog.show();
+		asyncTask.execute();
 	}
 
 	@Override
@@ -64,15 +109,79 @@ public class PerkCalculator extends ListActivity {
 
 	@Override
 	public boolean onOptionsItemSelected(MenuItem item) {
+		final ProgressDialog loadingDialog;
+		final AsyncTask<Void, Void, Void> asyncTask;
 		switch (item.getItemId()) {
 		case RESET_ID:
-			ContentValues values = new ContentValues();
-			values.put(Character_perks.value, 0);
-			getContentResolver().update(Character_perks.CONTENT_URI, values, Character_perks._ID + "=?", new String[]{Long.toString(mCharacter_id)});
-			getContentResolver().update(Init_character_perks_temp.CONTENT_URI, null, null, null);
+			loadingDialog = new ProgressDialog(this);
+			asyncTask = new AsyncTask<Void, Void, Void>() {
+
+				@Override
+				protected Void doInBackground(Void... arg0) {
+					ContentValues values = new ContentValues();
+					values.put(Character_perks.value, 0);
+					getContentResolver().update(Character_perks.CONTENT_URI, values, Character_perks._ID + "=?", new String[]{Long.toString(mCharacter_id)});
+					getContentResolver().update(Init_character_perks_temp.CONTENT_URI, null, null, null);
+					return null;
+				}
+
+				@Override
+				protected void onPostExecute(Void result) {
+					if (loadingDialog.isShowing()) {
+						loadingDialog.dismiss();
+					}
+				}
+			};
+			loadingDialog.setMessage(getString(R.string.msg_loading));
+			loadingDialog.setCancelable(true);
+			loadingDialog.setOnCancelListener(new DialogInterface.OnCancelListener() {				
+				@Override
+				public void onCancel(DialogInterface dialog) {
+					if (!asyncTask.isCancelled()) asyncTask.cancel(true);
+				}
+			});
+			loadingDialog.setButton(ProgressDialog.BUTTON_NEGATIVE, getString(android.R.string.cancel), new DialogInterface.OnClickListener() {
+				@Override
+				public void onClick(DialogInterface dialog, int which) {
+					dialog.cancel();
+				}
+			});
+			loadingDialog.show();
+			asyncTask.execute();
 			return true;
 		case SAVE_ID:
-			getContentResolver().update(Save_character_perks.CONTENT_URI, null, null, null);
+			loadingDialog = new ProgressDialog(this);
+			asyncTask = new AsyncTask<Void, Void, Void>() {
+
+				@Override
+				protected Void doInBackground(Void... arg0) {
+					getContentResolver().update(Save_character_perks.CONTENT_URI, null, null, null);
+					return null;
+				}
+
+				@Override
+				protected void onPostExecute(Void result) {
+					if (loadingDialog.isShowing()) {
+						loadingDialog.dismiss();
+					}
+				}
+			};
+			loadingDialog.setMessage(getString(R.string.msg_loading));
+			loadingDialog.setCancelable(true);
+			loadingDialog.setOnCancelListener(new DialogInterface.OnCancelListener() {				
+				@Override
+				public void onCancel(DialogInterface dialog) {
+					if (!asyncTask.isCancelled()) asyncTask.cancel(true);
+				}
+			});
+			loadingDialog.setButton(ProgressDialog.BUTTON_NEGATIVE, getString(android.R.string.cancel), new DialogInterface.OnClickListener() {
+				@Override
+				public void onClick(DialogInterface dialog, int which) {
+					dialog.cancel();
+				}
+			});
+			loadingDialog.show();
+			asyncTask.execute();
 			return true;
 		}
 		return super.onOptionsItemSelected(item);
@@ -83,9 +192,9 @@ public class PerkCalculator extends ListActivity {
 		super.onResume();
 		Cursor c;
 		if (mPerk > 0) {
-			c = managedQuery(Vcharacter_perks.CONTENT_URI, new String[]{Vcharacter_perks._ID, Vcharacter_perks.character_id, Vcharacter_perks.character_name, Vcharacter_perks.value, Vcharacter_perks.perk, Vcharacter_perks.perk_name, Vcharacter_perks.max, Vcharacter_perks.child, Vcharacter_perks.desc}, "_id=? and _id in (select perk_relationships.child from perk_relationships where perk_relationships._id=?)", new String[]{Long.toString(mCharacter_id), Long.toString(mPerk)}, null);
+			c = managedQuery(Vcharacter_perks.CONTENT_URI, new String[]{Vcharacter_perks._ID, Vcharacter_perks.character, Vcharacter_perks.character_name, Vcharacter_perks.value, Vcharacter_perks.perk, Vcharacter_perks.perk_name, Vcharacter_perks.max, Vcharacter_perks.hasChildren, Vcharacter_perks.desc, Vcharacter_perks.parentHasValue}, Vcharacter_perks.character + "=? and " + Vcharacter_perks.perk + " in (select " + SkyrimToolsProvider.TABLE_PERK_RELATIONSHIPS + "." + Perk_relationships.child + " from " + SkyrimToolsProvider.TABLE_PERK_RELATIONSHIPS + " where " + SkyrimToolsProvider.TABLE_PERK_RELATIONSHIPS + "." + Perk_relationships.parent + "=?)", new String[]{Long.toString(mCharacter_id), Long.toString(mPerk)}, null);
 		} else {
-			c = managedQuery(Vcharacter_perks.CONTENT_URI, new String[]{Vcharacter_perks._ID, Vcharacter_perks.character_id, Vcharacter_perks.character_name, Vcharacter_perks.value, Vcharacter_perks.perk, Vcharacter_perks.perk_name, Vcharacter_perks.max, Vcharacter_perks.child, Vcharacter_perks.desc}, "_id=? and (select perk_relationships._id from perk_relationships where perk_relationships.child=vcharacter_perks.perk) is null", new String[]{Long.toString(mCharacter_id)}, null);
+			c = managedQuery(Vcharacter_perks.CONTENT_URI, new String[]{Vcharacter_perks._ID, Vcharacter_perks.character, Vcharacter_perks.character_name, Vcharacter_perks.value, Vcharacter_perks.perk, Vcharacter_perks.perk_name, Vcharacter_perks.max, Vcharacter_perks.hasChildren, Vcharacter_perks.desc, Vcharacter_perks.parentHasValue}, Vcharacter_perks.character + "=? and max=0", new String[]{Long.toString(mCharacter_id)}, null);
 		}
 		SimpleCursorAdapter sca = new SimpleCursorAdapter(this, R.layout.perkrow, c, new String[] {Vcharacter_perks.perk_name}, new int[] {R.id.perkname});
 		sca.setViewBinder(mViewBinder);
@@ -107,40 +216,27 @@ public class PerkCalculator extends ListActivity {
 				} else {
 					perkname.setText(cursor.getString(SkyrimToolsProvider.Vcharacter_perksColumns.perk_name.ordinal()));
 				}
-				perkname.setOnClickListener(new OnClickListener() {
-
-					@Override
-					public void onClick(View arg0) {
-						(new AlertDialog.Builder(PerkCalculator.this))
-						.setTitle(R.string.lbl_description)
-						.setMessage(desc)
-						.setNegativeButton(android.R.string.ok, new DialogInterface.OnClickListener() {
-							public void onClick(DialogInterface dialog, int which) {
-								dialog.cancel();
-							}
-						})
-						.show();
-					}
-					
-				});
-				RelativeLayout viewParent = (RelativeLayout) view.getParent();
-				Button perkchild = (Button) viewParent.findViewById(R.id.perkchild);
-				if (((max == 0) || (value > 0)) && (cursor.getInt(SkyrimToolsProvider.Vcharacter_perksColumns.child.ordinal()) > 0)) {
-					// if there are sub-items, they'll load through onClick
-					perkchild.setOnClickListener(new OnClickListener() {
+				if ((desc != null) && (desc.length() > 0)) {
+					perkname.setOnClickListener(new OnClickListener() {
 
 						@Override
-						public void onClick(View v) {
-							// load PerkCalculator with this category
-							startActivity(new Intent(PerkCalculator.this, PerkCalculator.class).putExtra(EXTRA_CHARACTER_ID, mCharacter_id).putExtra(EXTRA_CHARACTER_NAME, mCharacter_name).putExtra(EXTRA_PERK_ID, id));
+						public void onClick(View arg0) {
+							(new AlertDialog.Builder(PerkCalculator.this))
+							.setTitle(R.string.lbl_description)
+							.setMessage(desc)
+							.setNegativeButton(android.R.string.ok, new DialogInterface.OnClickListener() {
+								public void onClick(DialogInterface dialog, int which) {
+									dialog.cancel();
+								}
+							})
+							.show();
 						}
 
 					});
-				} else {
-					perkname.setEnabled(false);
 				}
+				RelativeLayout viewParent = (RelativeLayout) view.getParent();
 				Button perkadd = (Button) (viewParent).findViewById(R.id.perkadd);
-				if (value < max) {
+				if ((value < max) && (cursor.getInt(SkyrimToolsProvider.Vcharacter_perksColumns.parentHasValue.ordinal()) > 0)) {
 					perkadd.setOnClickListener(new OnClickListener() {
 
 						@Override
@@ -155,11 +251,26 @@ public class PerkCalculator extends ListActivity {
 				} else {
 					perkadd.setEnabled(false);
 				}
+				Button perkchild = (Button) viewParent.findViewById(R.id.perkchild);
+				if (cursor.getInt(SkyrimToolsProvider.Vcharacter_perksColumns.hasChildren.ordinal()) > 0) {
+					// if there are sub-items, they'll load through onClick
+					perkchild.setOnClickListener(new OnClickListener() {
+
+						@Override
+						public void onClick(View v) {
+							// load PerkCalculator with this category
+							startActivity(new Intent(PerkCalculator.this, PerkCalculator.class).putExtra(EXTRA_CHARACTER_ID, mCharacter_id).putExtra(EXTRA_CHARACTER_NAME, mCharacter_name).putExtra(EXTRA_PERK_ID, id));
+						}
+
+					});
+				} else {
+					perkname.setEnabled(false);
+				}
 				return true;
 			} else {
 				return false;
 			}
 		}
 	};
-	
+
 }
