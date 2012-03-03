@@ -6,7 +6,7 @@
     <string name="lbl_health">Health</string>
     <string name="lbl_stamina">Stamina</string>
     <string name="lbl_levelup">Level Up</string>
-    <string name="lbl_reset">Reset</string>
+    <string name="lbl_reset">Reset All</string>
     <string name="lbl_undo">Undo</string>
     <string name="lbl_statcalculator">Stat Calculator</string>
     <string name="lbl_perkcalculator">Perk Calculator</string>
@@ -16,7 +16,7 @@
     <string name="lbl_description">Description</string>
     <string name="lbl_buildcharacter">Build a character</string>
     <string name="lbl_nocharacters">No characters</string>
-    <string name="lbl_save">Save</string>
+    <string name="lbl_save">Save All</string>
     <string name="lbl_name">Name</string>
     <string name="lbl_characterbuilder">Character Builder</string>
     <string name="lbl_deletecharacter">Delete character</string>

@@ -17,20 +17,21 @@ import com.piusvelte.skyrimtools.SkyrimToolsProvider.Vcharacter_perks;
 import android.app.AlertDialog;
 import android.app.ListActivity;
 import android.app.ProgressDialog;
+import android.app.ActionBar.LayoutParams;
 import android.content.ContentValues;
+import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.database.Cursor;
 import android.os.AsyncTask;
 import android.os.Bundle;
-import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
 import android.view.View.OnClickListener;
+import android.view.ViewGroup;
 import android.widget.Button;
 import android.widget.LinearLayout;
-import android.widget.RelativeLayout;
 import android.widget.SimpleCursorAdapter;
 import android.widget.TextView;
 
@@ -63,40 +64,41 @@ public class PerkCalculator extends ListActivity {
 			}
 		}
 		registerForContextMenu(getListView());
-		Log.v(this.getComponentName().getClassName(), "mCharacter_id:"+mCharacter_id+",mCharacter_name:"+mCharacter_name+",mPerk:"+mPerk);
-		// load the temp table
-		final ProgressDialog loadingDialog = new ProgressDialog(this);
-		final AsyncTask<Void, Void, Void> asyncTask = new AsyncTask<Void, Void, Void>() {
+		// load the temp table, for the top level
+		if (mPerk == 0) {
+			final ProgressDialog loadingDialog = new ProgressDialog(this);
+			final AsyncTask<Void, Void, Void> asyncTask = new AsyncTask<Void, Void, Void>() {
 
-			@Override
-			protected Void doInBackground(Void... arg0) {
-				getContentResolver().update(Init_character_perks_temp.CONTENT_URI, null, null, null);
-				return null;
-			}
-
-			@Override
-			protected void onPostExecute(Void result) {
-				if (loadingDialog.isShowing()) {
-					loadingDialog.dismiss();
+				@Override
+				protected Void doInBackground(Void... arg0) {
+					getContentResolver().update(Init_character_perks_temp.CONTENT_URI, null, null, null);
+					return null;
 				}
-			}
-		};
-		loadingDialog.setMessage(getString(R.string.msg_loading));
-		loadingDialog.setCancelable(true);
-		loadingDialog.setOnCancelListener(new DialogInterface.OnCancelListener() {				
-			@Override
-			public void onCancel(DialogInterface dialog) {
-				if (!asyncTask.isCancelled()) asyncTask.cancel(true);
-			}
-		});
-		loadingDialog.setButton(ProgressDialog.BUTTON_NEGATIVE, getString(android.R.string.cancel), new DialogInterface.OnClickListener() {
-			@Override
-			public void onClick(DialogInterface dialog, int which) {
-				dialog.cancel();
-			}
-		});
-		loadingDialog.show();
-		asyncTask.execute();
+
+				@Override
+				protected void onPostExecute(Void result) {
+					if (loadingDialog.isShowing()) {
+						loadingDialog.dismiss();
+					}
+				}
+			};
+			loadingDialog.setMessage(getString(R.string.msg_loading));
+			loadingDialog.setCancelable(true);
+			loadingDialog.setOnCancelListener(new DialogInterface.OnCancelListener() {				
+				@Override
+				public void onCancel(DialogInterface dialog) {
+					if (!asyncTask.isCancelled()) asyncTask.cancel(true);
+				}
+			});
+			loadingDialog.setButton(ProgressDialog.BUTTON_NEGATIVE, getString(android.R.string.cancel), new DialogInterface.OnClickListener() {
+				@Override
+				public void onClick(DialogInterface dialog, int which) {
+					dialog.cancel();
+				}
+			});
+			loadingDialog.show();
+			asyncTask.execute();
+		}
 	}
 
 	@Override
@@ -196,7 +198,7 @@ public class PerkCalculator extends ListActivity {
 		} else {
 			c = managedQuery(Vcharacter_perks.CONTENT_URI, new String[]{Vcharacter_perks._ID, Vcharacter_perks.character, Vcharacter_perks.character_name, Vcharacter_perks.value, Vcharacter_perks.perk, Vcharacter_perks.perk_name, Vcharacter_perks.max, Vcharacter_perks.hasChildren, Vcharacter_perks.desc, Vcharacter_perks.parentHasValue}, Vcharacter_perks.character + "=? and max=0", new String[]{Long.toString(mCharacter_id)}, null);
 		}
-		SimpleCursorAdapter sca = new SimpleCursorAdapter(this, R.layout.perkrow, c, new String[] {Vcharacter_perks.perk_name}, new int[] {R.id.perkname});
+		SimpleCursorAdapter sca = new SimpleCursorAdapter(this, R.layout.perkrow, c, new String[] {Vcharacter_perks.perk_name}, new int[] {R.id.perk});
 		sca.setViewBinder(mViewBinder);
 		setListAdapter(sca);
 	}
@@ -206,18 +208,21 @@ public class PerkCalculator extends ListActivity {
 		@Override
 		public boolean setViewValue(View view, Cursor cursor, int columnIndex) {
 			if (columnIndex == SkyrimToolsProvider.Vcharacter_perksColumns.perk_name.ordinal()) {
-				Button perkname = (Button) view;
+				Context context = PerkCalculator.this.getApplicationContext();
+				LinearLayout perkLayout = (LinearLayout) view;
+				perkLayout.removeAllViews();
 				final long id = cursor.getLong(SkyrimToolsProvider.Vcharacter_perksColumns._id.ordinal());
 				int max = cursor.getInt(SkyrimToolsProvider.Vcharacter_perksColumns.max.ordinal());
 				final int value = cursor.getInt(SkyrimToolsProvider.Vcharacter_perksColumns.value.ordinal());
 				final String desc = cursor.getString(SkyrimToolsProvider.Vcharacter_perksColumns.desc.ordinal());
-				if (max > 0) {
-					perkname.setText(String.format(getString(R.string.lbl_perkname), cursor.getString(SkyrimToolsProvider.Vcharacter_perksColumns.perk_name.ordinal()), cursor.getInt(SkyrimToolsProvider.Vcharacter_perksColumns.value.ordinal())));
-				} else {
-					perkname.setText(cursor.getString(SkyrimToolsProvider.Vcharacter_perksColumns.perk_name.ordinal()));
-				}
 				if ((desc != null) && (desc.length() > 0)) {
-					perkname.setOnClickListener(new OnClickListener() {
+					Button child = new Button(context);
+					if (max > 0) {
+						child.setText(String.format(getString(R.string.lbl_perkname), cursor.getString(SkyrimToolsProvider.Vcharacter_perksColumns.perk_name.ordinal()), cursor.getInt(SkyrimToolsProvider.Vcharacter_perksColumns.value.ordinal())));
+					} else {
+						child.setText(cursor.getString(SkyrimToolsProvider.Vcharacter_perksColumns.perk_name.ordinal()));
+					}
+					child.setOnClickListener(new OnClickListener() {
 
 						@Override
 						public void onClick(View arg0) {
@@ -233,28 +238,41 @@ public class PerkCalculator extends ListActivity {
 						}
 
 					});
-				}
-				RelativeLayout viewParent = (RelativeLayout) view.getParent();
-				Button perkadd = (Button) (viewParent).findViewById(R.id.perkadd);
-				if ((value < max) && (cursor.getInt(SkyrimToolsProvider.Vcharacter_perksColumns.parentHasValue.ordinal()) > 0)) {
-					perkadd.setOnClickListener(new OnClickListener() {
-
-						@Override
-						public void onClick(View v) {
-							// load PerkCalculator with this category
-							ContentValues values = new ContentValues();
-							values.put(Character_perks.value, value + 1);
-							getContentResolver().update(Character_perks_temp.CONTENT_URI, values, Character_perks._ID + "=?", new String[]{Long.toString(id)});
-						}
-
-					});
+					perkLayout.addView(child, new ViewGroup.LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT));
 				} else {
-					perkadd.setEnabled(false);
+					TextView child = new TextView(context);
+					if (max > 0) {
+						child.setText(String.format(getString(R.string.lbl_perkname), cursor.getString(SkyrimToolsProvider.Vcharacter_perksColumns.perk_name.ordinal()), cursor.getInt(SkyrimToolsProvider.Vcharacter_perksColumns.value.ordinal())));
+					} else {
+						child.setText(cursor.getString(SkyrimToolsProvider.Vcharacter_perksColumns.perk_name.ordinal()));
+					}
+					perkLayout.addView(child, new ViewGroup.LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT));
 				}
-				Button perkchild = (Button) viewParent.findViewById(R.id.perkchild);
+				if (max > 0) {
+					Button child = new Button(context);
+					child.setText(R.string.lbl_perkadd);
+					if ((value < max) && (cursor.getInt(SkyrimToolsProvider.Vcharacter_perksColumns.parentHasValue.ordinal()) > 0)) {
+						child.setOnClickListener(new OnClickListener() {
+
+							@Override
+							public void onClick(View v) {
+								// load PerkCalculator with this category
+								ContentValues values = new ContentValues();
+								values.put(Character_perks.value, value + 1);
+								getContentResolver().update(Character_perks_temp.CONTENT_URI, values, Character_perks._ID + "=?", new String[]{Long.toString(id)});
+							}
+
+						});
+					} else {
+						child.setEnabled(false);
+					}
+					perkLayout.addView(child, new ViewGroup.LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT));
+				}
 				if (cursor.getInt(SkyrimToolsProvider.Vcharacter_perksColumns.hasChildren.ordinal()) > 0) {
 					// if there are sub-items, they'll load through onClick
-					perkchild.setOnClickListener(new OnClickListener() {
+					Button child = new Button(context);
+					child.setText(R.string.lbl_perkchild);
+					child.setOnClickListener(new OnClickListener() {
 
 						@Override
 						public void onClick(View v) {
@@ -263,8 +281,7 @@ public class PerkCalculator extends ListActivity {
 						}
 
 					});
-				} else {
-					perkname.setEnabled(false);
+					perkLayout.addView(child, new ViewGroup.LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT));
 				}
 				return true;
 			} else {

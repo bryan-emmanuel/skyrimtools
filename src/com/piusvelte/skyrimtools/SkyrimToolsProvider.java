@@ -19,7 +19,6 @@ import android.database.sqlite.SQLiteOpenHelper;
 import android.database.sqlite.SQLiteQueryBuilder;
 import android.net.Uri;
 import android.provider.BaseColumns;
-import android.util.Log;
 
 public class SkyrimToolsProvider extends ContentProvider {
 	public static final String AUTHORITY = "com.piusvelte.skyrimtools.SkyrimToolsProvider";
@@ -45,12 +44,11 @@ public class SkyrimToolsProvider extends ContentProvider {
 		
 		public static final String name = "name";
 		public static final String max = "max";
-		public static final String child = "child";
 		public static final String desc = "desc";
 	}
 
 	protected static enum PerksColumns {
-		_id, name, max, child, desc
+		_id, name, max, desc
 	}
 	
 	private static final int PERK_RELATIONSHIPS = 1;
@@ -203,7 +201,6 @@ public class SkyrimToolsProvider extends ContentProvider {
 		perks_projectionMap.put(Perks._ID, Perks._ID);
 		perks_projectionMap.put(Perks.name, Perks.name);
 		perks_projectionMap.put(Perks.max, Perks.max);
-		perks_projectionMap.put(Perks.child, Perks.child);
 		perks_projectionMap.put(Perks.desc, Perks.desc);
 		sUriMatcher.addURI(AUTHORITY, TABLE_PERK_RELATIONSHIPS, PERK_RELATIONSHIPS);
 		perk_relationships_projectionMap = new HashMap<String, String>();
@@ -358,11 +355,6 @@ public class SkyrimToolsProvider extends ContentProvider {
 			qb.setProjectionMap(character_perks_projectionMap);
 			break;
 		case VCHARACTER_PERKS:
-			Log.v("SkyrimToolsProvider", "query:"+VIEW_CHARACTER_PERKS);
-			Log.v("SkyrimToolsProvider", "selection:"+selection);
-			for (String s : selectionArgs) {
-				Log.v("SkyrimToolsProvider", "selectionArg:"+s);
-			}
 			qb.setTables(VIEW_CHARACTER_PERKS);
 			qb.setProjectionMap(vcharacter_perks_projectionMap);
 			break;
@@ -402,11 +394,15 @@ public class SkyrimToolsProvider extends ContentProvider {
 			break;
 		case CHARACTER_PERKS_TEMP:
 			count = db.update(TABLE_CHARACTER_PERKS_TEMP, values, selection, selectionArgs);
+			// set the uri to the view to reload the perkcalculator query
+			uri = Vcharacter_perks.CONTENT_URI;
 			break;
 		case INIT_CHARACTER_PERKS_TEMP:
 			db.execSQL("delete from " + TABLE_CHARACTER_PERKS_TEMP + ";");
 			db.execSQL("insert into " + TABLE_CHARACTER_PERKS_TEMP + " select * from " + TABLE_CHARACTER_PERKS + ";");
 			count = 0;
+			// set the uri to the view to reload the perkcalculator query
+			uri = Vcharacter_perks.CONTENT_URI;
 			break;
 		case SAVE_CHARACTER_PERKS:
 			db.execSQL("delete from " + TABLE_CHARACTER_PERKS + ";");
@@ -468,9 +464,9 @@ public class SkyrimToolsProvider extends ContentProvider {
 					+ ",c." + Perks._ID + " as " + Vcharacter_perks.perk
 					+ ",c." + Perks.name + " as " + Vcharacter_perks.perk_name
 					+ ",c." + Perks.max + " as " + Vcharacter_perks.max
-					+ ",case when (select d." + Perks.child + " from " + TABLE_PERK_RELATIONSHIPS + " d where d." + Perk_relationships.parent + "=b." + Perks._ID + ") is null then 0 else 1 end as " + Vcharacter_perks.hasChildren
+					+ ",case when (select d." + Perk_relationships.child + " from " + TABLE_PERK_RELATIONSHIPS + " d where d." + Perk_relationships.parent + "=a." + Character_perks.perk + ") is null then 0 else 1 end as " + Vcharacter_perks.hasChildren
 					+ ",c." + Perks.desc + " as " + Vcharacter_perks.desc
-					+ ",case when (select e." + Character_perks.value + " from " + TABLE_CHARACTER_PERKS_TEMP + " e," + TABLE_PERKS + " f where f." + Perks._ID + "=e." + Character_perks.perk + " and (e." + Character_perks.value + ">0 or f." + Perks.max + "=0) and e." + Character_perks.perk + "=b." + Perks._ID + ") is null then 0 else 1 end as " + Vcharacter_perks.parentHasValue
+					+ ",case when (select e." + Perk_relationships._ID + " from " + TABLE_PERK_RELATIONSHIPS + " e," + TABLE_CHARACTER_PERKS_TEMP + " f," + TABLE_PERKS + " g where g." + Perks._ID + "=e." + Perk_relationships.parent + " and f." + Character_perks.perk + "=e." + Perk_relationships.parent + " and f." + Character_perks.character + "=a." + Character_perks.character + " and (f." + Character_perks.value + ">0 or g." + Perks.max + "=0) and e." + Perk_relationships.child + "=a." + Character_perks.perk + ") is null then 0 else 1 end as " + Vcharacter_perks.parentHasValue
 					+ " from "
 					+ TABLE_CHARACTER_PERKS_TEMP
 					+ " a," + TABLE_CHARACTERS
@@ -543,72 +539,72 @@ public class SkyrimToolsProvider extends ContentProvider {
 			initCategory(db, "Oblivion Binding", 1, initCategory(db, "Soul Stealer", 1, initCategory(db, "Mystic Binding", 1, id, "Bound weapons do more damage"), "Bound weapons cast Soul Trap on targets"), "Bound weapons will banish summoned creatures and turn raised ones");
 			initCategory(db, "Master Conjuration", 1, initCategory(db, "Expert Conjuration", 1, initCategory(db, "Adept Conjuration", 1, initCategory(db, "Apprentice Conjuration", 1, id, "Cast Apprentice level Conjuration spells for half magicka"), "Cast Adept level Conjuration spells for half magicka"), "Cast Expert level Conjuration spells for half magicka"), "Cast Master level Conjuration spells for half magicka");
 			//Destruction
-			id = initCategory(db, "Novice Destruction", 1, initCategory(db, "Destruction", 0, ""), "");
-			initCategory(db, "Intense Flames", 1, initCategory(db, "Augmented Flames", 1, id, ""), "");
-			initCategory(db, "Deep Freeze", 1, initCategory(db, "Augmented Frost", 1, id, ""), "");
-			initCategory(db, "Disintigrate", 1, initCategory(db, "Augmented Shock", 1, id, ""), "");
-			id2 = initCategory(db, "Apprentice Destruction", 1, id, "");
-			initCategory(db, "Master Destruction", 1, initCategory(db, "Expert Destruction", 1, initCategory(db, "Adept Destruction", 1, id2, ""), ""), "");
-			initCategory(db, "Rune Master", 1, id2, "");
-			initCategory(db, "Impact", 1, initCategory(db, "Destruction Dual Casting", 1, id, ""), "");
+			id = initCategory(db, "Novice Destruction", 1, initCategory(db, "Destruction", 0, ""), "Cast Novice level Destruction spells for half magicka");
+			initCategory(db, "Intense Flames", 1, initCategory(db, "Augmented Flames", 1, id, "Fire spells do 25% more damage (50% for second rank)"), "Fire damage causes targets to flee if their health is low");
+			initCategory(db, "Deep Freeze", 1, initCategory(db, "Augmented Frost", 1, id, "Frost spells do 25% more damage (50% for second rank)"), "Frost damage paralyzes targets if their health is low");
+			initCategory(db, "Disintigrate", 1, initCategory(db, "Augmented Shock", 1, id, "Shock spells do 25% more damage (50% for second rank)"), "Shock damage disintegrates targets if their health is low");
+			id2 = initCategory(db, "Apprentice Destruction", 1, id, "Cast Apprentice level Destruction spells for half magicka");
+			initCategory(db, "Master Destruction", 1, initCategory(db, "Expert Destruction", 1, initCategory(db, "Adept Destruction", 1, id2, "Cast Adept level Destruction spells for half magicka"), "Cast Expert level Destruction spells for half magicka"), "Cast Master level Destruction spells for half magicka");
+			initCategory(db, "Rune Master", 1, id2, "Can place runes five times farther away");
+			initCategory(db, "Impact", 1, initCategory(db, "Destruction Dual Casting", 1, id, "Dual casting a Destruction spell overcharges the effects into an even more powerful version"), "Most destruction spells will stagger an opponent when dual cast");
 			//Illusion
-			id = initCategory(db, "Novice Illusion", 1, initCategory(db, "Illusion", 0, ""), "");
-			initCategory(db, "Illusion Dual Casting", 1, id, "");
-			initCategory(db, "Master Illusion", 1, initCategory(db, "Expert Illusion", 1, initCategory(db, "Adept Illusion", 1, initCategory(db, "Apprentice Illusion", 1, id, ""), ""), ""), "");
+			id = initCategory(db, "Novice Illusion", 1, initCategory(db, "Illusion", 0, ""), "Cast Novice level Illusion spells for half magicka");
+			initCategory(db, "Illusion Dual Casting", 1, id, "Dual casting an Illusion spell overcharges the effects into an even more powerful version");
+			initCategory(db, "Master Illusion", 1, initCategory(db, "Expert Illusion", 1, initCategory(db, "Adept Illusion", 1, initCategory(db, "Apprentice Illusion", 1, id, "Cast Apprentice level Illusion spells for half magicka"), "Cast Adept level Illusion spells for half magicka"), "Cast Expert level Illusion spells for half magicka"), "Cast Master level Illusion spells for half magicka");
 			initRelationship(db,
-					initCategory(db, "Rage", 1, initCategory(db, "Aspect of Terror", 1, initCategory(db, "Hypnotic Gaze", 1, id, ""), ""), ""),
-					initCategory(db, "Master of the Mind", 1, initCategory(db, "Quiet Casting", 1, initCategory(db, "Kindred Mage", 1, initCategory(db, "Animage", 1, id, ""), ""), ""), ""));
+					initCategory(db, "Rage", 1, initCategory(db, "Aspect of Terror", 1, initCategory(db, "Hypnotic Gaze", 1, id, "Calm spells now work on higher level opponents"), "Fear spells work on higher level opponents"), "Frenzy spells work on higher level opponents"),
+					initCategory(db, "Master of the Mind", 1, initCategory(db, "Quiet Casting", 1, initCategory(db, "Kindred Mage", 1, initCategory(db, "Animage", 1, id, "Illusion spells now work on higher level animals"), "All Illusion spells work on higher level people"), "All spells you cast from any school of magic are silent to others"), "Illusion spells work on undead, daedra and automatons"));
 			//Restoration
-			id = initCategory(db, "Novice Restoration", 1, initCategory(db, "Restoration", 0, ""), "");
-			initCategory(db, "Respite", 1, id, "");
-			initCategory(db, "Necromage", 1, initCategory(db, "Regeneration", 1, id, ""), "");
-			initCategory(db, "Ward Absorb", 1, id, "");
-			initCategory(db, "Master Restoration", 1, initCategory(db, "Expert Restoration", 1, initCategory(db, "Adept Restoration", 1, initCategory(db, "Apprentice Restoration", 1, id, ""), ""), ""), "");
-			initCategory(db, "Avoid Death", 1, initCategory(db, "Recovery", 1, id, ""), "");
-			initCategory(db, "Restoration Dual Casting", 1, id, "");
+			id = initCategory(db, "Novice Restoration", 1, initCategory(db, "Restoration", 0, ""), "Cast Novice level Restoration spells for half magicka");
+			initCategory(db, "Respite", 1, id, "Healing spells also restore stamina");
+			initCategory(db, "Necromage", 1, initCategory(db, "Regeneration", 1, id, "Healing spells cure 50% more"), "All spells are more effective against undead");
+			initCategory(db, "Ward Absorb", 1, id, "Ward recharge your magicka when hit with spells");
+			initCategory(db, "Master Restoration", 1, initCategory(db, "Expert Restoration", 1, initCategory(db, "Adept Restoration", 1, initCategory(db, "Apprentice Restoration", 1, id, "Cast Apprentice level Restoration spells for half magicka"), "Cast Adept level Restoration spells for half magicka"), "Cast Expert level Restoration spells for half magicka"), "Cast Master level Restoration spells for half magicka");
+			initCategory(db, "Avoid Death", 1, initCategory(db, "Recovery", 1, id, "Magicka regenerates 25% faster (50% for second rank)"), "Once a day, heals 250 points automatically if you fall below 10% health");
+			initCategory(db, "Restoration Dual Casting", 1, id, "Dual casting a Restoration spell overcharges the effects into an even more powerful version");
 			//Enchanting
-			id = initCategory(db, "Enchanter", 5, initCategory(db, "Enchanting", 0, ""), "");
+			id = initCategory(db, "Enchanter", 5, initCategory(db, "Enchanting", 0, ""), "New enchantments are 20% stronger (+20% per additional rank)");
 			initRelationship(db,
-					initCategory(db, "Storm Enchanter", 1, initCategory(db, "Frost Enchanter", 1, initCategory(db, "Fire Enchanter", 1, id, ""), ""), ""),
-					initCategory(db, "Extra Effect", 1, initCategory(db, "Corpus Enchanter", 1, initCategory(db, "Insightful Enchanter", 1, id, ""), ""), ""));
-			initCategory(db, "Soul Siphon", 1, initCategory(db, "Soul Squeezer", 1, id, ""), "");
+					initCategory(db, "Storm Enchanter", 1, initCategory(db, "Frost Enchanter", 1, initCategory(db, "Fire Enchanter", 1, id, "Fire enchantments on weapons and armor are 25% stronger"), "Frost enchantments on weapons and armor are 25% stronger"), "Shock enchantments on weapons and armor are 25% stronger"),
+					initCategory(db, "Extra Effect", 1, initCategory(db, "Corpus Enchanter", 1, initCategory(db, "Insightful Enchanter", 1, id, "Skill enchantments on armor are 25% stronger"), "Health, magicka and stamina enchantments on armor are 25% stronger"), "Can put two enchantments on the same item"));
+			initCategory(db, "Soul Siphon", 1, initCategory(db, "Soul Squeezer", 1, id, "Soul gems provide extra magicka for recharging"), "Death blows to creatures, but not people, trap 5% of the victim's soul, recharging the weapon");
 			//THE THEIF
 			//Alchemy
-			id = initCategory(db, "Physician", 1, initCategory(db, "Alchemist", 5, initCategory(db, "Alchemy", 0, ""), ""), "");
-			id2 = initCategory(db, "Concetrated Poison", 1, initCategory(db, "Poisoner", 1, id, ""), "");
-			initCategory(db, "Green Thumb", 1, id2, "");
+			id = initCategory(db, "Physician", 1, initCategory(db, "Alchemist", 5, initCategory(db, "Alchemy", 0, ""), "Potions and poisons are 20% stronger (+20% per additional rank)"), "Potions you mix that restore health, magicka or stamina are 25% more powerful");
+			id2 = initCategory(db, "Concetrated Poison", 1, initCategory(db, "Poisoner", 1, id, "Poisons you mix are 25% more effective"), "Poisons applied to weapons last for twice as many hits");
+			initCategory(db, "Green Thumb", 1, id2, "Two ingredients are gathered from plants");
 			initCategory(db, "Purity", 1,
 					initRelationship(db,
 							id2,
-							initCategory(db, "Snakeblood", 1, initCategory(db, "Experimenter", 3, initCategory(db, "Benefactor", 1, id, ""), ""), "")), "");
+							initCategory(db, "Snakeblood", 1, initCategory(db, "Experimenter", 3, initCategory(db, "Benefactor", 1, id, "Potions you mix with beneficial effects have an additional 25% greater magnitude"), "Eating an ingredient reveals first two effects (+1 effect per additional rank)"), "50% resistance to poison")), "All negative effects are removed from created potions, and all positive effects are removed from created poisons");
 			//Light Armor
-			id = initCategory(db, "Custom Fit", 1, initCategory(db, "Agile Defender", 5, initCategory(db, "Light Armor", 0, ""), ""), "");
+			id = initCategory(db, "Custom Fit", 1, initCategory(db, "Agile Defender", 5, initCategory(db, "Light Armor", 0, ""), "Increase armor rating for Light Armor by 20% (+20% per additional rank)"), "25% armor bonus if wearing all Light Armor: head, chest, hands, feet");
 			initRelationship(db,
-					initCategory(db, "Wind Walker", 1, initCategory(db, "Unhindered", 1, id, ""), ""),
-					initCategory(db, "Deft Movement", 1, initCategory(db, "Matching Set", 1, id, ""), ""));
+					initCategory(db, "Wind Walker", 1, initCategory(db, "Unhindered", 1, id, "Light Armor weighs nothing and doesn't slow you down when worn"), "Stamina regenerates 50% faster in all Light Armor: head, chest, hands, feet"),
+					initCategory(db, "Deft Movement", 1, initCategory(db, "Matching Set", 1, id, "Additional 25% Armor bonus if wearing a matched set of Light Armor (for example, only Elven armor)"), "10% of avoiding all damage from a melee attack while wearing all Light Armor: head, chest, hands, feet"));
 			//Lockpicking
-			id = initCategory(db, "Apprentice Locks", 1, initCategory(db, "Novice Locks", 1, initCategory(db, "Lockpicking", 0, ""), ""), "");
-			initCategory(db, "Wax Key", 1, initCategory(db, "Quick Hands", 1, id, ""), "");
-			id = initCategory(db, "Adept Locks", 1, id, "");
-			initCategory(db, "Treasure Hunter", 1, initCategory(db, "Golden Touch", 1, id, ""), "");
-			id = initCategory(db, "Expert Locks", 1, id, "");
-			initCategory(db, "Unbreakable", 1, initCategory(db, "Locksmith", 1, id, ""), "");
-			initCategory(db, "Master Locks", 1, id, "");
+			id = initCategory(db, "Apprentice Locks", 1, initCategory(db, "Novice Locks", 1, initCategory(db, "Lockpicking", 0, ""), "Novice locks are much easier to pick"), "Apprentice locks are much easier to pick");
+			initCategory(db, "Wax Key", 1, initCategory(db, "Quick Hands", 1, id, "Able to pick locks without being noticed"), "Automatically gives you a copy of a picked lock's key if it has one");
+			id = initCategory(db, "Adept Locks", 1, id, "Adept locks are much easier to pick");
+			initCategory(db, "Treasure Hunter", 1, initCategory(db, "Golden Touch", 1, id, "Find more gold in chests"), "50% greater chance of finding special treasure");
+			id = initCategory(db, "Expert Locks", 1, id, "Expert locks are much easier to pick");
+			initCategory(db, "Unbreakable", 1, initCategory(db, "Locksmith", 1, id, "Pick starts close to the lock opening position"), "Lockpicks never break");
+			initCategory(db, "Master Locks", 1, id, "Master locks are much easier to pick");
 			//Pickpocket
-			id = initCategory(db, "Night Theif", 1, initCategory(db, "Light Fingers", 5, initCategory(db, "Pickpocket", 0, ""), ""), "");
-			initCategory(db, "Poisoned", 1, id, "");
-			initCategory(db, "Extra Pockets", 1, id, "");
-			id = initCategory(db, "Cutpurse", 1, id, "");
-			initCategory(db, "Keymaster", 1, id, "");
-			initCategory(db, "Perfect Touch", 1, initCategory(db, "Misdirection", 1, id, ""), "");
+			id = initCategory(db, "Night Theif", 1, initCategory(db, "Light Fingers", 5, initCategory(db, "Pickpocket", 0, ""), "Pickpocketing bonus of 20%. Item weight and value reduce pickpocketing odds (+5% per additional rank)"), "+25% chance to pickpocket if the target is asleep");
+			initCategory(db, "Poisoned", 1, id, "You can silently harm enemies by placing poisons in their pockets");
+			initCategory(db, "Extra Pockets", 1, id, "Carrying capacity is increased by 100");
+			id = initCategory(db, "Cutpurse", 1, id, "Pickpocketing gold is 50% easier");
+			initCategory(db, "Keymaster", 1, id, "Pickpocketing keys almost always works");
+			initCategory(db, "Perfect Touch", 1, initCategory(db, "Misdirection", 1, id, "Can pickpocket equipped weapons"), "Can pickpocket equipped items");
 			//Sneak
-			id = initCategory(db, "Stealth", 5, initCategory(db, "Sneak", 0, ""), "");
-			initCategory(db, "Shadow Warrior", 1, initCategory(db, "Silence", 1, initCategory(db, "Silent Roll", 1, initCategory(db, "Light Foot", 1, initCategory(db, "Muffled Movement", 1, id, ""), ""), ""), ""), "");
-			initCategory(db, "Assassin's Blade", 1, initCategory(db, "Deadly Aim", 1, initCategory(db, "Backstab", 1, id, ""), ""), "");
+			id = initCategory(db, "Stealth", 5, initCategory(db, "Sneak", 0, ""), "You are 20% harder to detect when sneaking (+5% per additional rank)");
+			initCategory(db, "Shadow Warrior", 1, initCategory(db, "Silence", 1, initCategory(db, "Silent Roll", 1, initCategory(db, "Light Foot", 1, initCategory(db, "Muffled Movement", 1, id, "Noise from armor is reduced by 50%"), "You won't trigger pressure plates"), "Sprinting while sneaking executes a silent forward roll"), "Walking and running doesn't affect detection"), "Crouching stops combat for a moment and forces distant opponents to search for a target");
+			initCategory(db, "Assassin's Blade", 1, initCategory(db, "Deadly Aim", 1, initCategory(db, "Backstab", 1, id, "Sneak attacks with one-handed weapons now do six times damage"), "Sneak attacks with bows now do three times damage"), "Sneak attacks with daggers now do a total of fifteen times damage");
 			//Speech
-			id = initCategory(db, "Haggling", 5, initCategory(db, "Speech", 0, ""), "");
-			initCategory(db, "Master Trader", 1, initCategory(db, "Fence", 1, initCategory(db, "Investor", 1, initCategory(db, "Merchant", 1, initCategory(db, "Allure", 1, id, ""), ""), ""), ""), "");
-			initCategory(db, "Intimidation", 1, initCategory(db, "Persuasion", 1, initCategory(db, "Bribery", 1, id, ""), ""), "");
+			id = initCategory(db, "Haggling", 5, initCategory(db, "Speech", 0, ""), "Buying and selling prices are 10% better (+5% per additional rank)");
+			initCategory(db, "Master Trader", 1, initCategory(db, "Fence", 1, initCategory(db, "Investor", 1, initCategory(db, "Merchant", 1, initCategory(db, "Allure", 1, id, "10% better prices with the opposite sex"), "Can sell any type of item to any kind of merchant"), "Can invest 500 gold with a shopkeeper to increase his available gold permanently"), "Can barter stolen goods with any merchant you have invested in"), "Every merchant in the world gains 1000 gold for bartering");
+			initCategory(db, "Intimidation", 1, initCategory(db, "Persuasion", 1, initCategory(db, "Bribery", 1, id, "Can bribe guards to ignore crimes"), "Persuasion attempts are 30% easier"), "Intimidation is twice as successful");
 		}
 		
 		private long initCategory(SQLiteDatabase db, String name, int max, String desc) {
